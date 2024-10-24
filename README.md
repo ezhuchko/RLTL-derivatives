@@ -51,4 +51,5 @@ The project dependencies are listed in `lakefile.lean`.
 
 ## Requirements 
 
-- `Lake` 5.0.0-6fce8f7 (`Lean` 4.7.0)
+- `lake` 5.0.0-6fce8f7 (`lean` 4.7.0)v4.8.0-rc1
+- `mathlib` v4.7.0 (`nightly-testing-2024-04-25`)
