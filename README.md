@@ -21,6 +21,7 @@ c) To build code and proofs from the **command line**:
   1. Install the Lean version manager [`elan`](https://github.com/leanprover/elan):
 ```shell
 curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+source $HOME/.elan/env
 ```
 
   2. Download prebuilt binaries for mathlib:
@@ -59,7 +60,11 @@ The project dependencies are listed in `lakefile.lean`.
 
 - `RLTL.lean` contains the main `derivation` theorem which corresponds to Theorem 4 from Section 7.6 of the paper. The theorem relies on properties of the key definitions listed above such as correctness (`denoteOneStep`) and completeness (`denoteOneStep'`) of `OneStep`, the equivalence between classical language-based semantics and derivatives (`equivalenceDer`) and the correctness and completeness properties of omega-regular language semantics (`regexOmegaClosure`). 
 
-## Requirements 
+## Dependencies
 
-- `lake` 5.0.0-6fce8f7 (`lean` 4.7.0)v4.8.0-rc1
-- `mathlib` v4.7.0 (`nightly-testing-2024-04-25`)
+ - [Lean](https://lean-lang.org/) 4.7.0
+ - [mathlib](https://github.com/leanprover-community/mathlib4/) revision [a5485f37](https://github.com/leanprover-community/mathlib4/tree/a5485f370ebd36f0c873820b1717d3d03b43b35e) from April 21 2024
+
+The Lean version manager elan and the build tool lake will automatically download these dependency versions when you run `lake build`.
+
+Lean has minimal platform requirements.  The instructions provided above will work on Ubuntu 24.04 (x86-64) with git and curl installed.  Other platforms, including Windows and macOS, are supported by Lean as well.  Please see the [Lean documentation](https://lean-lang.org/lean4/doc/setup.html) for more details on platform support.
