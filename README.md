@@ -16,6 +16,13 @@ Alternatively, you can also install Lean on your machine and run the project loc
   2. Open the `RLTL-derivatives` folder as the root directory in VS Code.
   3. Open the `Regex/Regex.lean` file, which collects all modules of the formalization.
 
+To build code and proofs from the command line:
+
+```shell
+lake update
+lake build Regex
+```
+
 ## Brief file overview
 
 Listed below is a brief description of each file of the formalization.
