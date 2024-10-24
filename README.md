@@ -47,18 +47,51 @@ Listed below is a brief description of each file of the formalization.
 
 The project dependencies are listed in `lakefile.lean`.
 
-## Key definitions 
+## List of claims
 
-* `ERE`: The class of extended regular expressions (ERE) which includes intersection and negation.
-* `RLTL`: The combination of linear temporal logic and extended regular expressions modulo an Effective Boolean Algebra.
-* `OneStep`: a predicate which looks one derivative step ahead in a given regular expression.
-* `ERE.models`: the matching relation for regular expressions based on language-based semantics. The notation `xs ⊫ R` expresses that a string `xs` matches the language of `R`. 
-* `InOmegaLanguage`: the matching relation for omega-regular languages. The notation `w ∈* R` expresses that a stream `w` matches the language of `R`.
-* `RLTL.models`: the matching relation for `RLTL` formulas. The notation `w |= f` expresses that a stream `w` matches the RLTL formula `f`.
+- `RLTL.lean` contains the main `derivation` theorem which corresponds to Theorem 4 from Section 7.6 of the paper. The theorem relies on properties of the key definitions listed above such as correctness (`denoteOneStep`) and completeness (`denoteOneStep'`) of `OneStep`, the equivalence between classical language-based semantics and derivatives (`equivalenceDer`) and the correctness and completeness properties of omega-regular language semantics (`regexOmegaClosure`).
 
-## List of claims 
+## Evaluation instructions
 
-- `RLTL.lean` contains the main `derivation` theorem which corresponds to Theorem 4 from Section 7.6 of the paper. The theorem relies on properties of the key definitions listed above such as correctness (`denoteOneStep`) and completeness (`denoteOneStep'`) of `OneStep`, the equivalence between classical language-based semantics and derivatives (`equivalenceDer`) and the correctness and completeness properties of omega-regular language semantics (`regexOmegaClosure`). 
+  1. Open the formalization in VS Code (see option (a) or (b) in "Quick start" above).
+    Verifying the formalization requires checking two aspects.  The instructions below ensure that these are met:
+      - that the formalization builds without errors and does not use any escape hatches like `sorry`, as well as
+      - that the top-level definitions and theorem statements match the paper.
+
+  2. Check that the formalization successfully builds by running this command (you can use the integrated terminal in VS Code for this):
+```shell
+lake build
+```
+  The build is successful if you don't see any error messages.
+
+  3. Check that the formalization does not contain `sorry` or `axiom` by using the search function of VS Code.
+
+  4. The definition of extended regular expressions (ERE) from Section 2.5 corresponds to the inductive type `ERE` in the file `Regex/Definitions.lean`.  Check that the constructors and the notation matches the paper.
+
+  5. The definition of RLTL from Section 7.3 corresponds to the inductive type `RLTL` in the file `Regex/Definitions.lean`.  Check that the constructors and the notation matches the paper.  Note that we append the subscript ₗ to some of the operators to prevent clashes with Lean syntax.
+
+  6. The definition of ⊧ for EREs from Section 6.1 corresponds to the definition `ERE.models` in the file `Regex/EREMatchSemantics.lean`.
+
+  7. The definition of ERE derivatives from Section 7.1 corresponds to the definition `ERE.derivative` in the file `Regex/EREMatchSemantics.lean`.  Check that these match; note that the `lift_*`, `pure` and `Pred` functions are left implicit in the paper for brevity.
+
+  8. The definition of OneStep from Section 7.2 corresponds to the definition `OneStep` in the file `Regex/RLTL.lean`.  Convince yourself that it is the same as in the paper.
+
+  9. The Lean definition `InOmegaLanguage` in the file `Regex/OmegaLanguage.lean` is described in Section 7.6.  The notation `w ∈* R` expresses that a stream `w` matches the language of `R^*`.
+
+  10. The definition of ⊧ for RLTL from Section 7.3 corresponds to the definition `RLTL.models` in the file `Regex/RLTL.lean`.  Convince yourself that it is the same as in the paper.
+
+  11. The definition of RLTL derivatives from Section 7.5 corresponds to the definition `RLTL.derivative` in the file `Regex/RLTL.lean`.  Check that these match; note that the `lift_*`, `pure` and `Pred` functions are left implicit in the paper for brevity.
+
+  12. Theorem 4 from Section 7.5 corresponds to the theorem `derivation` at the end of the file `Regex/RLTL.lean`.  Check that the statement matches.  As explained in Section 7.6, the EBA is implemented in Lean as a type class.  The assumption on the EBA is introduced at the begining of the file with a `variable` command.  Hover over the `derivation` identifier in VS Code to see the full type, including the type class.
+
+  13. Check that the theorem `derivation` does not use any nonstandard axioms by appending this line to the end of the file `Regex/RLTL.lean`:
+```lean
+#print axioms derivation
+```
+  This command generates an informational message listing the axioms that are transitively used by our formalization.  (VS Code checks the file as you type, you will get blue squigglies a moment after you insert the line.)  All of these are standard built-in axioms provided by Lean:
+```
+'derivation' depends on axioms: [propext, Classical.choice, Quot.sound]
+```
 
 ## Dependencies
 
