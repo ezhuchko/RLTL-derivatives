@@ -49,3 +49,6 @@ The project dependencies are listed in `lakefile.lean`.
 
 - `RLTL.lean` contains the main `derivation` theorem which corresponds to Theorem 4 from Section 7.6 of the paper. The theorem relies on properties of the key definitions listed above such as correctness (`denoteOneStep`) and completeness (`denoteOneStep'`) of `OneStep`, the equivalence between classical language-based semantics and derivatives (`equivalenceDer`) and the correctness and completeness properties of omega-regular language semantics (`regexOmegaClosure`). 
 
+## Requirements 
+
+- `Lake` 5.0.0-6fce8f7 (`Lean` 4.7.0)
