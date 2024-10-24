@@ -4,23 +4,33 @@ This repo contains the Lean formalization files for the paper "Symbolic Automata
 
 ## Quick start
 
-You can run this formalization online on GitHub codespaces, without installing anything:
+a) You can run this formalization **online on GitHub codespaces**, without installing anything:
 
   1. Press the comma key (<kbd>,</kbd>) to create a codespace, or just click this link: https://codespaces.new/ezhuchko/RLTL-derivatives
   2. Wait a minute or two for the codespace to be created.
   3. Open the `Regex/Regex.lean` file, which collects all modules of the formalization. Note that if Lean does not produce an error message, it means that the entire formalization compiles and there are no remaining `sorry`'s. 
 
-Alternatively, you can also install Lean on your machine and run the project locally:
+b) Alternatively, you can also install Lean **locally on your machine** and run the project locally:
 
   1. Install VS Code and then install the `lean4` extension.
   2. Open the `RLTL-derivatives` folder as the root directory in VS Code.
   3. Open the `Regex/Regex.lean` file, which collects all modules of the formalization.
 
-To build code and proofs from the command line:
+c) To build code and proofs from the **command line**:
 
+  1. Install the Lean version manager [`elan`](https://github.com/leanprover/elan):
 ```shell
-lake update
-lake build Regex
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh
+```
+
+  2. Download prebuilt binaries for mathlib:
+```shell
+lake exe cache get
+```
+
+  2. Build the project:
+```shell
+lake build
 ```
 
 ## Brief file overview
