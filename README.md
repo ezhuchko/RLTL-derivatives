@@ -8,13 +8,13 @@ a) You can run this formalization **online on GitHub codespaces**, without insta
 
   1. Press the comma key (<kbd>,</kbd>) to create a codespace, or just click this link: https://codespaces.new/ezhuchko/RLTL-derivatives
   2. Wait a minute or two for the codespace to be created.
-  3. Open the `Regex/Regex.lean` file, which collects all modules of the formalization. Note that if Lean does not produce an error message, it means that the entire formalization compiles and there are no remaining `sorry`'s. 
+  3. Open the `Regex.lean` file, which collects all modules of the formalization. Note that if Lean does not produce an error message, it means that the entire formalization compiles and there are no remaining `sorry`'s. 
 
 b) Alternatively, you can also install Lean **locally on your machine** and run the project locally:
 
   1. Install VS Code and then install the `lean4` extension.
   2. Open the `RLTL-derivatives` folder as the root directory in VS Code.
-  3. Open the `Regex/Regex.lean` file, which collects all modules of the formalization.
+  3. Open the `Regex.lean` file, which collects all modules of the formalization.
 
 c) To build code and proofs from the **command line**:
 
