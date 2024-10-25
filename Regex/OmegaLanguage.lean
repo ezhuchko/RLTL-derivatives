@@ -63,6 +63,16 @@ theorem charOmegaCons {w : Stream' σ} {r : ERE α} {deltas : Stream' ℕ}
     rw[←Nat.succ_eq_add_one,←length_cons a str,Stream'.drop_append_stream]
     exact (h i)
 
-theorem regexOmegaClosure {r : ERE α} : w ∈* r → (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) :=
-  fun ⟨deltas, h⟩ =>
-  ⟨head deltas + 1,by simp,charOmegaHead h,⟨Stream'.tail deltas,charOmegaDrop h⟩⟩
+theorem regexOmegaClosure {r : ERE α} : w ∈* r ↔ (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) :=
+  ⟨fun ⟨deltas, h⟩ =>
+   ⟨head deltas + 1,by simp,charOmegaHead h,⟨Stream'.tail deltas,charOmegaDrop h⟩⟩,
+   fun ⟨i,hi,h1,⟨deltas,h⟩⟩ =>
+   match i with
+   | 0 => by simp at hi
+   | Nat.succ i => by
+     exists i::deltas
+     intro j
+     match j with
+     | 0 => simp; exact h1
+     | Nat.succ j =>
+       simp; have := h j; simp at this; rw[←Nat.succ_eq_add_one] at this; exact this⟩
