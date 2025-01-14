@@ -63,7 +63,9 @@ def modelsEBA (a : σ) (φ : α) [EffectiveBooleanAlgebra α σ] := denote φ a
 infixr:40 " ⊨ " => modelsEBA
 
 /-- The class of extended regular expressions (ERE) which includes
-    intersection and negation. -/
+    intersection, negation, and fusion. The fusion operator `l : r` encodes
+    an overlap such that the last letter matching `l` is the first letter
+    matching `r`. -/
 inductive ERE (α : Type) where
   | ε                 : ERE α
   | Pred (e : α)      : ERE α
@@ -72,6 +74,7 @@ inductive ERE (α : Type) where
   | Concatenation     : ERE α → ERE α → ERE α
   | Star              : ERE α → ERE α
   | Negation          : ERE α → ERE α
+  | Fusion            : ERE α → ERE α → ERE α
   deriving Repr, DecidableEq
 open ERE
 
@@ -80,6 +83,7 @@ infixr:40 " ⋒ "  => Intersection
 infixr:50 " ⬝ "  => Concatenation
 postfix:max "*"  => Star
 prefix:max "~"   => Negation
+infixr:40 " : "  => Fusion
 
 /-- Encoding of Star using bounded loops. -/
 @[simp]

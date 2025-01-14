@@ -17,11 +17,6 @@ variable {α σ : Type} [EffectiveBooleanAlgebra α σ] [DecidableEq α] [Decida
 open List Stream' TTerm ERE RLTL
 
 /-- OneStep of r is a predicate which looks one derivative step ahead. -/
-def OneStep' (tr : TTerm α (ERE α)) : α :=
-  match tr with
-  | Leaf r     => if nullable r then ⊤ else ⊥
-  | Node α f g => (α ⊓ OneStep' f) ⊔ (αᶜ ⊓ OneStep' g)
-
 def OneStep (r : ERE α) := OneStep' (derivative r)
 
 /-- The derivatives of RLTL are defined using transition terms (TTerm). -/
@@ -126,63 +121,30 @@ theorem expansion_release {φ ψ : RLTL α} :
         | .succ i =>
           apply Or.inr ⟨i.succ.succ,h4,fun k _ => match k with | 0 => h1 | .succ k => h5 k (by linarith)⟩
 
-theorem denoteOneStep' {f : TTerm α (ERE α)} :
-  [] ⊫ f [a] ↔ a ⊨ (OneStep' f) := by
-  unfold OneStep'
-  match f with
-  | Leaf rr =>
-    simp[equivalenceNull]
-    by_cases h : nullable rr
-    . simp[h]
-    . simp[h]
-  | Node g g1 g2 =>
-    by_cases h : denote g a
-    . simp[h]
-      apply Iff.intro
-      . intro h1
-        erw[denoteOneStep'] at h1 -- inductive hypothesis
-        simp at h1; exact h1
-      . intro h1
-        erw[←denoteOneStep'] at h1 -- inductive hypothesis
-        exact h1
-    . simp[h]
-      apply Iff.intro
-      . intro h1
-        erw[denoteOneStep'] at h1 -- inductive hypothesis
-        simp at h1; exact h1
-      . intro h1
-        erw[←denoteOneStep'] at h1 -- inductive hypothesis
-        exact h1
+/-- An example of an algebraic rewrite rule: the existential suffix implication operator distributes over union. -/
+theorem esi_distributivity {l r : ERE α} {φ : RLTL α} :
+  w |= ((l ⋓ r) ◇→ φ) ↔ w |= (l ◇→ φ) ∨ w |= (r ◇→ φ) := by
+  simp[RLTL.models, ERE.models]
+  apply Iff.intro
+  . intro ⟨i,h1,h2⟩
+    match h1 with
+    | Or.inl h1 => exact Or.inl ⟨i,h1,h2⟩
+    | Or.inr h1 => exact Or.inr ⟨i,h1,h2⟩
+  . intro h
+    match h with
+    | Or.inl ⟨i,h1,h2⟩ => exact ⟨i,Or.inl h1,h2⟩
+    | Or.inr ⟨i,h1,h2⟩ => exact ⟨i,Or.inr h1,h2⟩
 
-theorem denoteOneStep {r : ERE α} :
-  [a] ⊫ r ↔ a ⊨ (OneStep r) := by
-  rw[equivalenceDer]
-  match g : ERE.derivative r with
-  | Leaf f =>
-    simp[OneStep,g,OneStep',equivalenceNull]; aesop
-  | Node p f g =>
-    simp[g,OneStep,OneStep']
-    match denote p a with
-    | true =>
-      apply Iff.intro
-      . intro h; simp at h; simp; apply denoteOneStep'.mp h
-      . intro h
-        match h with
-        | Or.inl h1 =>
-          simp at h1; simp
-          apply denoteOneStep'.mpr h1
-        | Or.inr h1 =>
-          simp at h1 -- contradiction
-    | false =>
-      apply Iff.intro
-      . intro h; simp; simp at h; apply denoteOneStep'.mp h
-      . intro h
-        match h with
-        | Or.inl h1 =>
-          simp at h1 -- contradiction
-        | Or.inr h1 =>
-          simp; simp at h1
-          apply denoteOneStep'.mpr h1
+/-- An example of an algebraic rewrite rule: the universala suffix implication operator distributes over union. -/
+theorem usi_distributivity {l r : ERE α} {φ : RLTL α} :
+  w |= ((l ⋓ r) ▫→ φ) ↔ w |= (l ▫→ φ) ∧ w |= (r ▫→ φ) := by
+  simp[RLTL.models, ERE.models]
+  apply Iff.intro
+  . intro h; exact ⟨fun i hi => h i (Or.inl hi), fun i hi => h i (Or.inr hi)⟩
+  . intro h i hi
+    match hi with
+    | Or.inl hi => exact h.1 i hi
+    | Or.inr hi => exact h.2 i hi
 
 /-- The main theorem (Theorem 4 in the paper) proving derivation of the derivation rules for RLTL. -/
 theorem derivation {φ : RLTL α} :
@@ -225,13 +187,18 @@ theorem derivation {φ : RLTL α} :
         | .succ i => exact Or.inr ⟨i,equivalenceDer.mp h1,h2⟩
       . intro h
         match h with
-        | Or.inl h1        => exact ⟨0,denoteOneStep.mpr g,derivation.mpr h1⟩ -- inductive hypothesis
+        | Or.inl h1        =>
+          exact ⟨0,equivalenceDer.mpr (denoteOneStep.mpr g),derivation.mpr h1⟩ -- inductive hypothesis
         | Or.inr ⟨i,h1,h2⟩ => exact ⟨i.succ,equivalenceDer.mpr h1,h2⟩
     . simp [g,RLTL.models]
       apply Iff.intro
       . intro ⟨i,h1,h2⟩
         match i with
-        | 0       => simp at h1; erw[←denoteOneStep] at g; contradiction
+        | 0       =>
+          simp at h1; erw[←denoteOneStep] at g
+          have := equivalenceDer (r:=r) (xs:=[]) (a:=a)
+          rw[this] at h1
+          contradiction
         | .succ i => exact ⟨i,equivalenceDer.mp h1,h2⟩
       . intro ⟨i,h1,h2⟩; exact ⟨i.succ,equivalenceDer.mpr h1,h2⟩
   | r ▫→ φ => by
@@ -239,7 +206,8 @@ theorem derivation {φ : RLTL α} :
     by_cases g : denote (OneStep r) a
     . simp[g,RLTL.models]
       apply Iff.intro
-      . intro h; have h1 := h 0 (denoteOneStep.mpr g)
+      . intro h
+        have h1 := h 0 (equivalenceDer.mpr (denoteOneStep.mpr g))
         exact ⟨derivation.mp h1,fun i hi => h i.succ (equivalenceDer.mpr hi)⟩ -- inductive hypothesis
       . intro ⟨h1,h2⟩ i hi
         match i with
@@ -250,7 +218,7 @@ theorem derivation {φ : RLTL α} :
       . intro h i hi; exact (h i.succ (equivalenceDer.mpr hi))
       . intro h i hi
         match i with
-        | 0       => simp at hi; erw[←denoteOneStep] at g; contradiction
+        | 0       => simp at hi; erw[←denoteOneStep] at g; rw[←equivalenceDer] at g; contradiction
         | .succ i => exact h i (equivalenceDer.mp hi)
   | ⦃ r ⦄ => by
     simp[RLTL.models,RLTL.derivative]
@@ -305,7 +273,7 @@ theorem derivation {φ : RLTL α} :
             apply Or.inr ⟨n,equivalenceDer.mp gg2,tail deltas,h1⟩
       . intro h
         match h with
-        | Or.inl ⟨deltas,h2⟩ => exact ⟨0::deltas,charOmegaCons h2 (denoteOneStep.mpr g)⟩
+        | Or.inl ⟨deltas,h2⟩ => exact ⟨0::deltas,charOmegaCons h2 (equivalenceDer.mpr (denoteOneStep.mpr g))⟩
         | Or.inr ⟨i,h1,⟨deltas,proof⟩⟩ =>
           have gg := charOmegaCons proof (equivalenceDer.mpr h1)
           simp[cons_append_stream,append_take_drop] at gg
@@ -315,7 +283,7 @@ theorem derivation {φ : RLTL α} :
       . intro ⟨deltas,h1⟩
         have h2 := charOmegaHead h1
         match hp : head deltas with
-        | 0 => simp[hp] at h2; erw[←denoteOneStep] at g; contradiction
+        | 0 => simp[hp] at h2; erw[←denoteOneStep] at g; rw[←equivalenceDer] at g; contradiction
         | .succ n =>
           simp[equivalenceDer,hp] at h2
           have t := charOmegaDrop h1; rw[hp,drop_succ] at t; exact ⟨n,h2,tail deltas,t⟩

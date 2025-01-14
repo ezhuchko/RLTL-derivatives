@@ -22,21 +22,30 @@ def nullable (r : ERE α) : Bool :=
   | l ⬝ r      => nullable l && nullable r
   | _*         => true
   | ~ r        => !nullable r
+  | _ : _      => false
+
+def OneStep' (tr : TTerm α (ERE α)) : α :=
+  match tr with
+  | Leaf r     => if nullable r then ⊤ else ⊥
+  | Node α f g => (α ⊓ OneStep' f) ⊔ (αᶜ ⊓ OneStep' g)
 
 def ERE.derivative (r : ERE α) : TTerm α (ERE α) :=
   match r with
   | ε          => TTerm.pure (Pred ⊥)
   | ERE.Pred b => Node b (TTerm.pure ε) (TTerm.pure (Pred ⊥))
   | l ⋓ r      => lift_binary (· ⋓ ·) (derivative l) (derivative r)
-  | l ⋒ r  => lift_binary (· ⋒ ·) (derivative l) (derivative r)
-  | l ⬝ r =>
+  | l ⋒ r      => lift_binary (· ⋒ ·) (derivative l) (derivative r)
+  | l ⬝ r      =>
     if nullable l then
       lift_binary (· ⋓ ·) (lift_binary (· ⬝ ·) (derivative l) (TTerm.pure r))
                           (derivative r)
     else
       lift_binary (· ⬝ ·) (derivative l) (TTerm.pure r)
-  | r * => lift_binary (· ⬝ ·) (derivative r) (TTerm.pure r*)
-  | ~ r => lift_unary (~ ·) (derivative r)
+  | r *   => lift_binary (· ⬝ ·) (derivative r) (TTerm.pure r*)
+  | ~ r   => lift_unary (~ ·) (derivative r)
+  | l : r =>
+    lift_binary (· ⋓ ·) (Node (OneStep' (ERE.derivative l)) (derivative r) (TTerm.pure (Pred ⊥)))
+                        (lift_unary (· : r) (derivative l))
 prefix:max " δ " => ERE.derivative
 
 /-- The match semantics of ERE are formalised using the models relation. -/
@@ -66,6 +75,13 @@ def ERE.models (xs : List σ) (r : ERE α) : Prop :=
   | ~ r        =>
     have : star_metric r < (star_metric (~ r)) := star_metric_neg
     ¬ ERE.models xs r
+  | l : r      =>
+    ∃ (u₁ u₂ : List σ) (c : σ),
+          have : star_metric l < (star_metric (l : r)) := star_metric_catL
+          have : star_metric r < (star_metric (l : r)) := star_metric_catR
+          ERE.models (u₁ ++ [c]) l
+        ∧ ERE.models (c::u₂) r
+        ∧ u₁ ++ [c] ++ u₂ = xs
 termination_by star_metric r
 decreasing_by
   repeat (simp_wf; assumption)
@@ -74,13 +90,71 @@ notation:52 lhs:53 " ⊫ " rhs:53 => ERE.models lhs rhs
 theorem equivalenceNull {r : ERE α} :
   [] ⊫ r ↔ nullable r :=
   match r with
-  | ε => by simp[ERE.models,nullable]
-  | ERE.Pred p => by simp[ERE.models,nullable]
-  | l ⋓ r => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
-  | l ⋒ r => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
-  | l ⬝ r => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
-  | r * => by simp[ERE.models,nullable]; exists 0
-  | ~ r => by simp only [ERE.models,nullable]; rw[equivalenceNull]; simp
+  | ε      => by simp[ERE.models,nullable]
+  | Pred p => by simp[ERE.models,nullable]
+  | l ⋓ r  => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
+  | l ⋒ r  => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
+  | l ⬝ r  => by simp[ERE.models,nullable]; rw[←equivalenceNull,←equivalenceNull]
+  | r *    => by simp[ERE.models,nullable]; exists 0
+  | ~ r    => by simp only [ERE.models,nullable]; rw[equivalenceNull]; simp
+  | l : r  => by simp[ERE.models,nullable]
+
+theorem denoteOneStep' {f : TTerm α (ERE α)} :
+  [] ⊫ f [a] ↔ a ⊨ (OneStep' f) := by
+  unfold OneStep'
+  match f with
+  | Leaf rr =>
+    simp[equivalenceNull]
+    by_cases h : nullable rr
+    . simp[h]
+    . simp[h]
+  | Node g g1 g2 =>
+    by_cases h : denote g a
+    . simp[h]
+      apply Iff.intro
+      . intro h1
+        erw[denoteOneStep'] at h1 -- inductive hypothesis
+        simp at h1; exact h1
+      . intro h1
+        erw[←denoteOneStep'] at h1 -- inductive hypothesis
+        exact h1
+    . simp[h]
+      apply Iff.intro
+      . intro h1
+        erw[denoteOneStep'] at h1 -- inductive hypothesis
+        simp at h1; exact h1
+      . intro h1
+        erw[←denoteOneStep'] at h1 -- inductive hypothesis
+        exact h1
+
+theorem denoteOneStep {r : ERE α} :
+  [] ⊫ (δ r) [a] ↔ (a ⊨ OneStep' (derivative r)) := by
+  match g : ERE.derivative r with
+  | Leaf f =>
+    simp[g,OneStep',equivalenceNull]; aesop
+  | Node p f g =>
+    simp[g,OneStep']
+    match denote p a with
+    | true =>
+      apply Iff.intro
+      . intro h; simp at h; simp; apply denoteOneStep'.mp h
+      . intro h
+        match h with
+        | Or.inl h1 =>
+          simp at h1; simp
+          apply denoteOneStep'.mpr h1
+        | Or.inr h1 =>
+          simp at h1 -- contradiction
+    | false =>
+      apply Iff.intro
+      . intro h; simp; simp at h; apply denoteOneStep'.mp h
+      . intro h
+        match h with
+        | Or.inl h1 =>
+          simp at h1 -- contradiction
+        | Or.inr h1 =>
+          simp; simp at h1
+          apply denoteOneStep'.mpr h1
 
 theorem derives_Star {r : ERE α} (h : a :: xs ⊫ r⁽n⁾) :
   ∃ u₁, a::u₁ ⊫ r ∧ ∃ x, (∃ m, x ⊫ r⁽m⁾) ∧ u₁ ++ x = xs := by
@@ -162,21 +236,17 @@ theorem equivalenceDer {r : ERE α} :
       . intro ⟨u,hu,⟨x,hv,hv1⟩⟩
         match u with
         | [] =>
-          simp[←equivalenceDer] -- inductive hypothesis
           subst hv1
-          apply Or.inr hv
+          apply Or.inr (equivalenceDer.mp hv) -- inductive hypothesis
         | .cons rr rs =>
           simp at hv1; let ⟨k1,k2⟩ := hv1; subst k1
-          apply Or.inl ⟨rs,by simp[←equivalenceDer]; exact hu,⟨x,hv,k2⟩⟩ -- inductive hypothesis
+          apply Or.inl ⟨rs,equivalenceDer.mp hu,⟨x,hv,k2⟩⟩ -- inductive hypothesis
       . intro h1
         match h1 with
         | Or.inl ⟨u,hu,⟨x,hv,hv1⟩⟩ =>
-          simp[←equivalenceDer] at hu -- inductive hypothesis
-          subst hv1
-          exact ⟨a::u,hu,⟨x,hv,rfl⟩⟩
+          subst hv1; exact ⟨a::u,equivalenceDer.mpr hu,⟨x,hv,rfl⟩⟩ -- inductive hypothesis
         | Or.inr h3 =>
-          simp[←equivalenceNull] at g
-          exact ⟨[],g,⟨a::xs,by rw[equivalenceDer]; exact h3,rfl⟩⟩ -- inductive hypothesis
+          exact ⟨[],equivalenceNull.mpr g,⟨a::xs,equivalenceDer.mpr h3,rfl⟩⟩ -- inductive hypothesis
     . simp[g,liftB,ERE.models]
       apply Iff.intro
       . intro ⟨h1,h2,⟨h3,h4,h5⟩⟩
@@ -184,7 +254,68 @@ theorem equivalenceDer {r : ERE α} :
         | [] => simp at h5; subst h5; simp[←equivalenceNull] at g; contradiction
         | .cons rr rs =>
           simp at h5; let ⟨k1,k2⟩ := h5; subst k1
-          exact ⟨rs,by simp[←equivalenceDer]; exact h2,⟨h3,h4,k2⟩⟩ -- inductive hypothesis
+          exact ⟨rs,equivalenceDer.mp h2,⟨h3,h4,k2⟩⟩ -- inductive hypothesis
       . intro ⟨h1,h2,⟨h3,h4,h5⟩⟩
-        simp[←equivalenceDer] at h2 -- inductive hypothesis
-        exact ⟨a::h1,h2,⟨h3,h4,by aesop⟩⟩
+        exact ⟨a::h1,equivalenceDer.mpr h2,⟨h3,h4,by simp; exact h5⟩⟩ -- inductive hypothesis
+  | l : r => by
+    by_cases g : denote (OneStep' δ l) a = true
+    . apply Iff.intro
+      . intro h
+        simp[models] at h
+        let ⟨u1,u2,d,h1,h2,h3⟩ := h; clear h
+        match u1 with
+        | [] =>
+          simp at h1 h2 h3; let ⟨k1,k2⟩ := h3; subst k1 k2; clear h3
+          simp only [derivative,liftB,TTerm.pure,liftU]
+          simp[g,models]
+          apply Or.inl (equivalenceDer.mp h2) -- inductive hypothesis
+        | a::as =>
+          simp at h1 h2 h3; let ⟨k1,_⟩ := h3; subst k1
+          simp only [derivative, liftB, TTerm.pure,liftU]
+          simp[g, models]
+          apply Or.inr ⟨as,u2,d,(equivalenceDer.mp h1),h2,h3.2⟩ -- inductive hypothesis
+      . intro h
+        simp only [models,g,derivative,liftB,TTerm.pure,liftU] at h
+        simp[g,models] at h
+        match h with
+        | Or.inl h1 =>
+          unfold models; exists []; exists xs; exists a; simp
+          have := denoteOneStep.mpr g
+          rw[←equivalenceDer] at h1 this -- inductive hypothesis
+          exact ⟨this,h1⟩
+        | Or.inr ⟨u1,u2,d,h1,h2,h3⟩ =>
+          unfold models; exists (a::u1); exists u2; exists d; simp
+          rw[←equivalenceDer] at h1 -- inductive hypothesis
+          exact ⟨h1,h2,h3⟩
+    . apply Iff.intro
+      . intro h
+        simp[models] at h
+        let ⟨u1,u2,d,h1,h2,h3⟩ := h; clear h
+        match u1 with
+        | [] =>
+          simp only [derivative,liftB,TTerm.pure,liftU,g,models]
+          simp at h1 h3; let ⟨k1,k2⟩ := h3; subst k1
+          rw[equivalenceDer] at h1 -- inductive hypothesis
+          have := denoteOneStep (r:=l) (a:=d); unfold modelsEBA at this
+          rw[this.mp h1] at g
+          contradiction
+        | a::as =>
+          simp only [derivative,liftB,TTerm.pure,liftU,g,models]
+          simp at h1 h3; let ⟨k1,k2⟩ := h3; subst k1; simp
+          rw[equivalenceDer] at h1 -- inductive hypothesis
+          apply Or.inr ⟨as,u2,d,h1,h2,h3.2⟩
+      . intro h
+        simp only [derivative,liftB,TTerm.pure,liftU] at h
+        simp[g,models] at h
+        let ⟨u1,u2,d,h1,h2,h3⟩ := h; clear h
+        match u1 with
+        | [] =>
+          simp at h1 h2 h3; subst h3
+          simp only [models]
+          rw[←equivalenceDer] at h1 -- inductive hypothesis
+          exact ⟨[a],u2,d,h1,h2,rfl⟩
+        | b::bs =>
+          simp at h1 h2 h3; subst h3
+          simp only [models]
+          rw[←equivalenceDer] at h1 -- inductive hypothesis
+          exact ⟨a::b::bs,u2,d,h1,h2,by simp⟩

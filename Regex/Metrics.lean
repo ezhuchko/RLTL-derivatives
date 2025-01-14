@@ -20,6 +20,7 @@ def sizeOf_ERE (r : ERE α) : ℕ :=
   | l ⬝ r      => 1 + sizeOf_ERE l + sizeOf_ERE r
   | r *        => 1 + sizeOf_ERE r
   | ~ r        => 1 + sizeOf_ERE r
+  | l : r      => 1 + sizeOf_ERE l + sizeOf_ERE r
 
 instance : WellFoundedRelation (ℕ ×ₗ ℕ) where
   rel := (· < ·)
@@ -35,6 +36,7 @@ def star_metric (r : ERE α) : ℕ ×ₗ ℕ :=
   | l ⬝ r      => (max (star_metric l).1 (star_metric r).1, 1 + (star_metric l).2 + (star_metric r).2)
   | r *        => (1 + (star_metric r).1, 1 + (star_metric r).2)
   | ~ r        => ((star_metric r).1, 1 + (star_metric r).2)
+  | l : r      => (max (star_metric l).1 (star_metric r).1, 1 + (star_metric l).2 + (star_metric r).2)
 
 theorem star_metric_catL :
   star_metric l < (star_metric (l ⬝ r)) := by
