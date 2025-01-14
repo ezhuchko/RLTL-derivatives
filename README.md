@@ -1,4 +1,4 @@
-# Lean4 formalization of "Symbolic Automata: 𝜔-Regularity Modulo Theories"
+# Lean4 formalization of RLTL
 
 This repo contains the Lean formalization files for the paper "Symbolic Automata: 𝜔-Regularity Modulo Theories".
 
