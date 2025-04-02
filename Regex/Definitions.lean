@@ -5,62 +5,8 @@ import Mathlib.Order.BooleanAlgebra
 /-!
 # Main definitions
 
-Contains the definition of effective boolean algebras, regular expressions, and RLTL formulas.
+Contains the definition of regular expressions and RLTL formulas.
 -/
-
-/-- Denotation typeclass, used to equip a boolean algebra with a denotation function. -/
-class Denotation (α : Type u) (σ : outParam (Type v)) where
-  denote : α → σ → Bool
-export Denotation (denote)
-
-/-- Effective boolean algebra typeclass, with laws. -/
-class EffectiveBooleanAlgebra (α : Type u) (σ : outParam (Type v))
-    extends Denotation α σ, Bot α, Top α, Inf α, Sup α, HasCompl α where
-  denote_bot : denote ⊥ c = false
-  denote_top : denote ⊤ c = true
-  denote_compl : denote aᶜ c = !denote a c
-  denote_inf : denote (a ⊓ b) c = (denote a c && denote b c)
-  denote_sup : denote (a ⊔ b) c = (denote a c || denote b c)
-
-open EffectiveBooleanAlgebra in
-attribute [simp] denote_bot denote_top denote_inf denote_sup denote_compl
-
-/-- Freely generated boolean algebra on a set of predicates. -/
-inductive BA (α : Type u)
-  | atom (a : α)
-  | top | bot
-  | and (a b : BA α)
-  | or (a b : BA α)
-  | not (a : BA α)
-  deriving Repr, DecidableEq
-open BA
-
-/-- Denotation function induced on the free boolean algebra. -/
-protected def BA.denote [Denotation α σ] (c : σ) : BA α → Bool
-  | atom a => denote a c
-  | not a => !(a.denote c)
-  | and a b => a.denote c && b.denote c
-  | or a b => a.denote c || b.denote c
-  | bot => false
-  | top => true
-
-/-- The free boolean algebra is indeed an effective boolean algebra. -/
-instance [Denotation α σ] : EffectiveBooleanAlgebra (BA α) σ where
-  bot := BA.bot
-  top := BA.top
-  inf := BA.and
-  sup := BA.or
-  compl := BA.not
-  denote_bot := rfl
-  denote_top := rfl
-  denote_inf := rfl
-  denote_sup := rfl
-  denote_compl := rfl
-  denote a c := a.denote c
-
-@[simp]
-def modelsEBA (a : σ) (φ : α) [EffectiveBooleanAlgebra α σ] := denote φ a
-infixr:40 " ⊨ " => modelsEBA
 
 /-- The class of extended regular expressions (ERE) which includes
     intersection, negation, and fusion. The fusion operator `l : r` encodes
@@ -104,7 +50,7 @@ inductive RLTL (α : Type) where
   | Until : RLTL α → RLTL α → RLTL α
   | Release : RLTL α → RLTL α → RLTL α
   | Implication : RLTL α → RLTL α → RLTL α
-  | ESI : ERE α → RLTL α → RLTL α      -- existential suffix implication
+  | ESI : ERE α → RLTL α → RLTL α      -- 𝜔-fusion (existential suffix implication)
   | USI : ERE α → RLTL α → RLTL α      -- universal suffix implication
   | WeakClosure : ERE α → RLTL α
   | OmegaClosure : ERE α → RLTL α
@@ -116,8 +62,8 @@ prefix:max " X " => Next
 postfix:max "^ω " => OmegaClosure
 infixr:35 " ∨ₗ " => RLTL.Or
 infixr:40 " ∧ₗ " => RLTL.And
-infixr:20 " ◇→ " => RLTL.ESI
-infixr:20 " ▫→ " => RLTL.USI
+infixr:20 " ﹕﹕ " => RLTL.ESI
+infixr:20 " :> " => RLTL.USI
 infixr:45 " →ₗ " => RLTL.Implication
 prefix:max "¬ₗ"  => RLTL.Neg
 notation "⦃" r "⦄"  => RLTL.WeakClosure r

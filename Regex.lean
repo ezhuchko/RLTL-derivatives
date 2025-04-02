@@ -1,6 +1,7 @@
 import Regex.Definitions
-import Regex.EREMatchSemantics
+import Regex.ERE
 import Regex.Metrics
 import Regex.OmegaLanguage
 import Regex.RLTL
 import Regex.TTerm
+import Regex.EffectiveBooleanAlgebra
