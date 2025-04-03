@@ -36,9 +36,9 @@ def RLTL.derivative (r : RLTL α) : TTerm α (RLTL α) :=
     let rhs := lift_binary (· ∨ₗ ·) (derivative φ) (.pure (φ R ψ))
     lift_binary (· ∧ₗ ·) (derivative ψ) rhs
   | φ →ₗ ψ  => lift_binary (· →ₗ ·) (derivative φ) (derivative ψ)
-  | r ﹕﹕ φ  =>
+  | r ∷ φ  =>
     let lhs := Node (OneStep r) (derivative φ) (.pure (Pred ⊥))
-    lift_binary (· ∨ₗ ·) lhs (lift_unary (· ﹕﹕ φ) (δ r))
+    lift_binary (· ∨ₗ ·) lhs (lift_unary (· ∷ φ) (δ r))
   | r :> φ  =>
     let lhs := Node (OneStep r) (derivative φ) (.pure (Pred ⊤))
     lift_binary (· ∧ₗ ·) lhs (lift_unary (· :> φ) (δ r))
@@ -50,7 +50,7 @@ def RLTL.derivative (r : RLTL α) : TTerm α (RLTL α) :=
   | r^ω     =>
     let lhs := lift_binary (· ∧ₗ ·) (derivative (Pred (OneStep r)))
                                     (.pure r^ω)
-    lift_binary (· ∨ₗ ·) lhs (lift_unary (· ﹕﹕ X (r^ω)) (δ r))
+    lift_binary (· ∨ₗ ·) lhs (lift_unary (· ∷ X (r^ω)) (δ r))
 termination_by sizeOf_RLTL r
 prefix:max " 𝜕 " => RLTL.derivative
 
@@ -73,7 +73,7 @@ def RLTL.models (w : Stream' σ) : RLTL α → Prop
       (∀ i, models (drop i w) ψ)
     ∨ (∃ j, models (drop j w) φ ∧ ∀ k ≤ j, models (drop k w) ψ)
   | φ →ₗ ψ  => models w φ → models w ψ
-  | r ﹕﹕ φ  =>
+  | r ∷ φ  =>
     ∃ i, take (i + 1) w ⊫ r ∧ models (drop i w) φ
   | r :> φ  =>
     ∀ i, take (i + 1) w ⊫ r → models (drop i w) φ
@@ -153,7 +153,7 @@ theorem expansion_release {φ ψ : RLTL α} :
 /-- An example of an algebraic rewrite rule: the existential suffix implication operator distributes
     over union. -/
 theorem esi_distributivity {l r : ERE α} {φ : RLTL α} :
-  w |= ((l ⋓ r) ﹕﹕ φ) ↔ w |= (l ﹕﹕ φ) ∨ w |= (r ﹕﹕ φ) := by
+  w |= ((l ⋓ r) ∷ φ) ↔ w |= (l ∷ φ) ∨ w |= (r ∷ φ) := by
   simp only [RLTL.models, ERE.models]
   apply Iff.intro
   . intro ⟨i,h1,h2⟩
@@ -210,7 +210,7 @@ theorem RLTL.derivation {φ : RLTL α} :
     simp only [RLTL.models, Stream'.tail_cons, RLTL.derivative, TTerm.pure,
                liftB, evaluation]
     rw [RLTL.derivation,RLTL.derivation] -- inductive hypothesis
-  | r ﹕﹕ ψ => by
+  | r ∷ ψ => by
     simp only [RLTL.models, RLTL.derivative, liftB, liftU]
     by_cases g : denote (OneStep r) a
     . simp only [Stream'.take_succ_cons, evaluation, g, ↓reduceIte]

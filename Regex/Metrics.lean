@@ -124,7 +124,7 @@ def sizeOf_RLTL : RLTL α → ℕ
   | X φ            => 1 + sizeOf_RLTL φ
   | φ U ψ          => 1 + sizeOf_RLTL φ + sizeOf_RLTL ψ
   | φ R ψ          => 1 + sizeOf_RLTL φ + sizeOf_RLTL ψ
-  | r ﹕﹕ φ         => 1 + sizeOf_ERE r + sizeOf_RLTL φ
+  | r ∷ φ         => 1 + sizeOf_ERE r + sizeOf_RLTL φ
   | r :> φ         => 1 + sizeOf_ERE r + sizeOf_RLTL φ
   | ⦃ r ⦄          => 1 + sizeOf_ERE r
   | OmegaClosure r => 1 + sizeOf_ERE r
