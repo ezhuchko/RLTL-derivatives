@@ -34,6 +34,11 @@ def TTerm.fmap (f : β → γ) (b : TTerm α β) : TTerm α γ :=
   | Node p a b => Node p (fmap f a) (fmap f b)
 
 @[simp]
+theorem fmap_compose :
+  fmap g (fmap f x) = fmap (g ∘ f) x := by
+  sorry
+
+@[simp]
 def TTerm.bind (f : β → TTerm α γ) : TTerm α β → TTerm α γ :=
   fun b => join (fmap f b)
 
@@ -84,20 +89,22 @@ theorem liftB (op : β → β → β') (f g : TTerm α β) (x : σ) :
       have ih := liftB op ff (Leaf g1) x -- inductive hypothesis
       simp only [evaluation, gg1, ↓reduceIte]
       simp only [evaluation] at ih
-      exact ih
+      sorry
     | false =>
       have ih1 := liftB op gg (Leaf g1) x -- inductive hypothesis
       simp only [evaluation, gg1, ↓reduceIte]
       simp only [evaluation] at ih1
-      exact ih1
+      sorry
   | Leaf f1, Node p ff gg => by
     match hm : denote p x with
     | true  =>
       simp only [evaluation, hm, ↓reduceIte]
-      exact (liftU (op f1) ff x)
+      sorry
+      -- exact (liftU (op f1) ff x)
     | false =>
       simp only [evaluation, hm, ↓reduceIte]
-      exact (liftU (op f1) gg x)
+      sorry
+      -- exact (liftU (op f1) gg x)
   | Node p ff gg, Node p1 ff1 gg1 => by
     match hm : denote p x with
     | true  =>
@@ -107,21 +114,25 @@ theorem liftB (op : β → β → β') (f g : TTerm α β) (x : σ) :
         have ih := liftB op ff (Node p1 ff1 gg1) x -- inductive hypothesis
         simp only [hm, ↓reduceIte]
         simp only [evaluation, n2, ↓reduceIte] at ih
-        exact ih
+        -- exact ih
+        sorry
       | false =>
         have ih := liftB op ff (Node p1 ff1 gg1) x -- inductive hypothesis
         simp only [hm, ↓reduceIte]
         simp only [evaluation, n2, ↓reduceIte] at ih
-        exact ih
+        -- exact ih
+        sorry
     | false =>
       match n2:denote p1 x with
       | true  =>
         have ih := liftB op gg (Node p1 ff1 gg1) x -- inductive hypothesis
         simp only [evaluation, hm, ↓reduceIte, n2]
         simp only [evaluation, n2, ↓reduceIte] at ih
-        exact ih
+        -- exact ih
+        sorry
       | false =>
         have ih := liftB op gg (Node p1 ff1 gg1) x -- inductive hypothesis
         simp only [evaluation, hm, ↓reduceIte, n2]
         simp only [evaluation, n2, ↓reduceIte] at ih
-        exact ih
+        -- exact ih
+        sorry

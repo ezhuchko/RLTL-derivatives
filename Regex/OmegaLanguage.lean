@@ -2,6 +2,7 @@ import Regex.ERE
 import Mathlib.Data.Stream.Defs
 import Mathlib.Data.Stream.Init
 import Init.Data.Bool
+import Batteries.Data.Nat.Lemmas
 
 /-!
 # Omega language
@@ -14,17 +15,27 @@ variable {α σ : Type} [EffectiveBooleanAlgebra α σ]
 
 open List Stream' TTerm ERE RLTL
 
+
+-- abcdefhijksdflopiejfoaiejfsudhfaiuysehf
+--      ^           ^      ^         ^
+--      6          12     18        24     boundaries = pointers
+--   0       1         2          3        word lengths = "indexes"
+
+abbrev Index : Type := ℕ
+
+abbrev Delta : Type := Index → ℕ -- associate a word index to its beginning in the stream
+
 @[simp]
-def getWordStart (w : Stream' ℕ) (i : ℕ) : ℕ :=
+def getWordStart (deltas : Delta) (i : Index) : ℕ :=
   match i with
   | 0 => 0
-  | .succ i => getWordStart (tail w) i + (head w + 1)
+  | .succ i => (head deltas + 1) + getWordStart (tail deltas) i
 
 /-- This predicate checks whether a stream `w` is in the ω-closure of `r`, based on a
     stream of subword lengths `deltas`. -/
 @[simp]
-def IsDeltasOmegaLanguage (w : Stream' σ) (r : ERE α) (deltas : Stream' ℕ) : Prop :=
-  ∀ (i : ℕ),                            -- for all starting indices (of all subwords)
+def IsDeltasOmegaLanguage (w : Stream' σ) (r : ERE α) (deltas : Delta) : Prop :=
+  ∀ (i : Index),                        -- for all regex matches,
     let start := getWordStart deltas i  -- get the starting index of the subword
     let len := get deltas i + 1         -- get the length of the subword
     take len (drop start w) ⊫ r         -- check that it is in the language of r
@@ -34,18 +45,54 @@ def IsDeltasOmegaLanguage (w : Stream' σ) (r : ERE α) (deltas : Stream' ℕ) :
     partitions `w` into subwords of non-zero lengths that are each in the language
     of `r`. The stream `deltas` ensures that the partitioning is well-defined. -/
 def InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop :=
-  ∃ (deltas : Stream' ℕ), IsDeltasOmegaLanguage w r deltas
+  ∃ (deltas : Delta), IsDeltasOmegaLanguage w r deltas
 
 infixr:40 " ∈* "  => InOmegaLanguage
 
-theorem charOmegaDrop {w : Stream' σ} {r : ERE α} {deltas : Stream' ℕ}
+
+theorem tt {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas)
+        : IsDeltasOmegaLanguage w r (Stream'.tail deltas) := by
+  intro i
+  sorry
+
+theorem neat {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas) :
+  getWordStart deltas idx = sum (Stream'.take idx deltas) + idx := by
+  match idx with
+  | 0 => simp
+  | idx + 1 =>
+    simp[Stream'.take_succ]
+    have z := neat (tt p) (deltas := tail deltas) (idx := idx)
+    linarith
+
+theorem getWordStart_end {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas) :
+  getWordStart deltas (idx + 1) =
+    getWordStart deltas idx + (Stream'.get deltas idx + 1) := by
+  rw[neat (idx := idx + 1) p]
+  rw[neat (idx := idx) p]
+  simp only [Stream'.take_succ']
+  simp only [Nat.sum_append]
+  simp
+  linarith
+
+theorem charOmegaDrop {w : Stream' σ} {r : ERE α} {deltas : Delta}
   (h : IsDeltasOmegaLanguage w r deltas) :
   IsDeltasOmegaLanguage (drop (head deltas + 1) w) r (tail deltas) :=
   fun i => by simp only [get_tail, Stream'.drop_drop]; exact h (i + 1)
 
-theorem charOmegaHead {w : Stream' σ} {r : ERE α} {deltas : Stream' ℕ}
+theorem charOmegaHead {w : Stream' σ} {r : ERE α} {deltas : Delta}
   (h : IsDeltasOmegaLanguage w r deltas) :
   take ((head deltas) + 1) w ⊫ r := h 0
+
+theorem charOmeganth {w : Stream' σ} {r : ERE α} {deltas : Delta}
+  (h : IsDeltasOmegaLanguage w r deltas) (i : ℕ) :
+  take ((get deltas i) + 1) (drop (getWordStart deltas i) w) ⊫ r := by
+  match i with
+  | 0 => simp; exact charOmegaHead h
+  | i + 1 =>
+    simp
+    have := charOmegaDrop h i
+    simp at this
+    exact this
 
 theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
   match s with
@@ -55,20 +102,24 @@ theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
     simp only [get_zero_cons, Stream'.tail_cons, cons.injEq, true_and]
     exact take_length_append
 
-theorem charOmegaCons {w : Stream' σ} {r : ERE α} {deltas : Stream' ℕ}
+theorem charOmegaCons {w : Stream' σ} {r : ERE α} {deltas : Delta}
   (h : IsDeltasOmegaLanguage w r deltas) (m : a :: str ⊫ r):
   -- we just put str and not a :: str because in the stream the length is minus one
   IsDeltasOmegaLanguage ((a :: str) ++ₛ w) r (length str :: deltas) :=
   fun i =>
   match i with
   | 0 => by
-    simp only [get_zero_cons, getWordStart, Stream'.drop_zero]
-    rw[←Nat.succ_eq_add_one,←length_cons a str,take_length_append]
+    simp [get_zero_cons, getWordStart, Stream'.drop_zero]
+    rw[←Nat.succ_eq_add_one]
+    have : (a::str).length = str.length.succ := rfl
+    rw[←this, take_length_append]
     exact m
   | Nat.succ i => by
     simp only [get_succ_cons, getWordStart, Stream'.tail_cons, get_zero_cons]
     rw[←Stream'.drop_drop,←Nat.succ_eq_add_one]
-    rw[←Nat.succ_eq_add_one,←length_cons a str,Stream'.drop_append_stream]
+    rw[←Nat.succ_eq_add_one]
+    have : (a::str).length = str.length.succ := rfl
+    rw[←this,Stream'.drop_append_stream]
     exact (h i)
 
 theorem regexOmegaClosure {r : ERE α} :

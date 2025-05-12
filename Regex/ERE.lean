@@ -38,20 +38,20 @@ def OneStep' : TTerm α (ERE α) → α
     encodes the transition behaviour of the `derivative` function.  -/
 @[simp]
 def ERE.derivative : ERE α → TTerm α (ERE α)
-  | ε          => .pure (Pred ⊥)
-  | ERE.Pred b => Node b (.pure ε) (.pure (Pred ⊥))
+  | ε          => Leaf (Pred ⊥)
+  | ERE.Pred b => Node b (Leaf ε) (Leaf (Pred ⊥))
   | l ⋓ r      => lift_binary (· ⋓ ·) (derivative l) (derivative r)
   | l ⋒ r      => lift_binary (· ⋒ ·) (derivative l) (derivative r)
   | l ⬝ r      =>
     if nullable l then
-      lift_binary (· ⋓ ·) (lift_binary (· ⬝ ·) (derivative l) (.pure r))
+      lift_binary (· ⋓ ·) (lift_binary (· ⬝ ·) (derivative l) (Leaf r))
                           (derivative r)
     else
-      lift_binary (· ⬝ ·) (derivative l) (.pure r)
-  | r *   => lift_binary (· ⬝ ·) (derivative r) (.pure r*)
+      lift_binary (· ⬝ ·) (derivative l) (Leaf r)
+  | r *   => lift_binary (· ⬝ ·) (derivative r) (Leaf r*)
   | ~ r   => lift_unary (~ ·) (derivative r)
   | l : r =>
-    let lhs := Node (OneStep' (derivative l)) (derivative r) (.pure (Pred ⊥))
+    let lhs := Node (OneStep' (derivative l)) (derivative r) (Leaf (Pred ⊥))
     lift_binary (· ⋓ ·) lhs (lift_unary (· : r) (derivative l))
 prefix:max " δ " => ERE.derivative
 
@@ -97,9 +97,7 @@ notation:52 lhs:53 " ⊫ " rhs:53 => ERE.models lhs rhs
 
 theorem predicate_nonEmpty {p : α}:
   ¬ [] ⊫ Pred p :=
-  λ g => by
-  let ⟨_,gfalse,_⟩ := g
-  simp only at gfalse
+  λ g => by simp at g
 
 theorem equivalenceNull {r : ERE α} :
   [] ⊫ r ↔ nullable r :=
@@ -107,7 +105,7 @@ theorem equivalenceNull {r : ERE α} :
   | ε      => by simp only [models, nullable]
   | Pred p => by
     simp_rw [predicate_nonEmpty]
-    simp only [nullable]
+    simp only [nullable, Bool.false_eq_true]
   | l ⋓ r  => by
     simp only [models, nullable, Bool.or_eq_true]
     apply or_congr equivalenceNull equivalenceNull -- inductive hypothesis
@@ -115,7 +113,7 @@ theorem equivalenceNull {r : ERE α} :
     simp only [models, nullable, Bool.and_eq_true]
     apply and_congr equivalenceNull equivalenceNull -- inductive hypothesis
   | l ⬝ r  => by
-    simp only [models, append_eq_nil, nullable, Bool.and_eq_true]
+    simp only [models, List.append_eq_nil_iff, nullable, Bool.and_eq_true]
     simp_rw [←equivalenceNull (r:=l),←equivalenceNull (r:=r)] -- inductive hypothesis
     apply Iff.intro
     . intro ⟨xs,ys,h1,h2,eq1,eq2⟩; subst eq1 eq2; exact ⟨h1,h2⟩
@@ -123,13 +121,14 @@ theorem equivalenceNull {r : ERE α} :
   | r *    => by
     simp only [models, nullable, iff_true]
     exists 0
+    simp only [repeat_cat, models]
   | ~ r    => by
     simp only [models, nullable, Bool.not_eq_true']
     simp only [equivalenceNull, Bool.not_eq_true] -- inductive hypothesis
   | l : r  => by
     simp only [ERE.models, nullable, iff_false]
-    simp only [append_assoc, singleton_append, append_eq_nil]
-    intro ⟨_,_,_,_,_,_,hfalse⟩; exact hfalse
+    simp only [append_assoc, cons_append, nil_append, append_eq_nil_iff, reduceCtorEq, and_false,
+      exists_false, exists_const, Bool.false_eq_true]
 
 theorem denoteOneStep' {f : TTerm α (ERE α)} :
   [] ⊫ f [a] ↔ a ⊨ (OneStep' f) :=
@@ -138,7 +137,7 @@ theorem denoteOneStep' {f : TTerm α (ERE α)} :
     simp only [OneStep', evaluation, equivalenceNull, modelsEBA]
     by_cases h : nullable rr
     . simp only [h, ↓reduceIte, denote_top]
-    . simp only [h, ↓reduceIte, denote_bot]
+    . simp [h, ↓reduceIte, denote_bot]
   | Node g g1 g2 => by
     by_cases h : denote g a
     . simp only [OneStep', evaluation, h, modelsEBA, denote_sup, denote_inf,
@@ -157,7 +156,7 @@ theorem denoteOneStep {r : ERE α} :
     simp only [evaluation, equivalenceNull, modelsEBA, OneStep']
     by_cases h : nullable f
     . simp only [h, ↓reduceIte, denote_top]
-    . simp only [h, ↓reduceIte, denote_bot]
+    . simp [h, ↓reduceIte, denote_bot]
   | Node p f g =>
     simp only [evaluation, modelsEBA, OneStep', denote_sup,
                denote_inf, denote_compl, Bool.or_eq_true,
@@ -166,7 +165,7 @@ theorem denoteOneStep {r : ERE α} :
     | true =>
       apply Iff.intro
       . intro h
-        simp only [true_and, false_and, or_false]
+        simp [true_and, false_and, or_false]
         apply denoteOneStep'.mp h
       . intro h
         match h with
@@ -174,15 +173,15 @@ theorem denoteOneStep {r : ERE α} :
           simp only [true_and] at h1
           apply denoteOneStep'.mpr h1
         | Or.inr h1 =>
-          simp only [false_and] at h1 -- contradiction
+          simp [false_and] at h1 -- contradiction
     | false =>
       apply Iff.intro
-      . intro h; simp only [false_and, true_and, false_or]
+      . intro h; simp [false_and, true_and, false_or]
         apply denoteOneStep'.mp h
       . intro h
         match h with
         | Or.inl h1 =>
-          simp only [false_and] at h1 -- contradiction
+          simp [false_and] at h1 -- contradiction
         | Or.inr h1 =>
           simp only [true_and] at h1
           apply denoteOneStep'.mpr h1
@@ -190,7 +189,7 @@ theorem denoteOneStep {r : ERE α} :
 theorem derives_Star {r : ERE α} (h : a :: xs ⊫ r⁽n⁾) :
   ∃ u₁, a::u₁ ⊫ r ∧ ∃ x, (∃ m, x ⊫ r⁽m⁾) ∧ u₁ ++ x = xs := by
   match n with
-  | 0 => simp only [repeat_cat, models] at h
+  | 0 => simp [repeat_cat, models] at h
   | .succ n =>
     simp only [repeat_cat, models, exists_and_left] at h
     let ⟨u1,h1,u2,h2,h3⟩ := h
@@ -201,10 +200,10 @@ theorem derives_Star {r : ERE α} (h : a :: xs ⊫ r⁽n⁾) :
     | .cons z zs =>
       match xs with
       | [] =>
-        simp only [cons_append, cons.injEq, append_eq_nil] at h3
+        simp only [cons_append, cons.injEq, append_eq_nil_iff] at h3
         let ⟨k1,k2,k3⟩ := h3
         subst k1 k2 k3
-        simp only [append_eq_nil, exists_eq_right_right]
+        simp only [append_eq_nil_iff, exists_eq_right_right]
         exact ⟨h1,⟨n,h2⟩⟩
       | .cons x xs =>
         simp only [cons_append, cons.injEq] at h3
@@ -215,20 +214,12 @@ theorem derives_Star {r : ERE α} (h : a :: xs ⊫ r⁽n⁾) :
 theorem ERE.derivation {r : ERE α} :
   a::xs ⊫ r ↔ xs ⊫ (δ r)[a] :=
   match r with
-  | ε => by
-    simp only [models, evaluation, modelsEBA,
-               denote_bot, and_false, exists_false]
+  | ε => by simp
   | ERE.Pred p => by
     simp only [models, cons.injEq, modelsEBA, evaluation]
     by_cases h : denote p a
-    . simp only [h, ↓reduceIte, models]
-      apply Iff.intro
-      . intro ⟨_,⟨_,x2⟩,_⟩; subst x2; rfl
-      . intro h1; subst h1; exact ⟨a,⟨⟨rfl,rfl⟩,h⟩⟩
-    . simp only [h, ↓reduceIte, models, modelsEBA,
-                 denote_bot, and_false,
-                 exists_false, iff_false, not_exists, not_and,
-                 Bool.not_eq_true, and_imp, forall_eq', implies_true]
+    . simp [h, models]
+    . simp [h]
   | l ⋓ r => by
     simp only [ERE.models,evaluation,ERE.derivative]
     rw [ERE.derivation,ERE.derivation,liftB] -- inductive hypothesis
@@ -292,7 +283,7 @@ theorem ERE.derivation {r : ERE α} :
           subst hv1; exact ⟨a::u,ERE.derivation.mpr hu,⟨x,hv,rfl⟩⟩ -- inductive hypothesis
         | Or.inr h3 =>
           exact ⟨[],equivalenceNull.mpr g,⟨a::xs,ERE.derivation.mpr h3,rfl⟩⟩ -- inductive hypothesis
-    . simp only [g, ↓reduceIte, liftB, evaluation, models, exists_and_left]
+    . simp [g, ↓reduceIte, liftB, evaluation, models, exists_and_left]
       apply Iff.intro
       . intro ⟨h1,h2,⟨h3,h4,h5⟩⟩
         match h1 with
@@ -300,7 +291,7 @@ theorem ERE.derivation {r : ERE α} :
           simp only [nil_append] at h5; subst h5
           rw [←equivalenceNull] at g; contradiction
         | .cons rr rs =>
-          simp only [cons_append, cons.injEq] at h5
+          simp [cons_append, cons.injEq] at h5
           let ⟨k1,k2⟩ := h5; subst k1
           exact ⟨rs,ERE.derivation.mp h2,⟨h3,h4,k2⟩⟩ -- inductive hypothesis
       . intro ⟨h1,h2,⟨h3,h4,h5⟩⟩
@@ -359,10 +350,8 @@ theorem ERE.derivation {r : ERE α} :
           rw [ERE.derivation] at h1 -- inductive hypothesis
           apply Or.inr ⟨as,u2,d,h1,h2,h3.2⟩
       . intro h
-        simp only [derivative, TTerm.pure, liftB, liftU] at h
-        simp only [evaluation, g, ↓reduceIte, models, modelsEBA,
-                   denote_bot, and_false, exists_false, append_assoc,
-                   singleton_append, false_or] at h
+        simp [derivative, TTerm.pure, liftB, liftU] at h
+        simp [evaluation, g] at h
         let ⟨u1,u2,d,h1,h2,h3⟩ := h
         match u1 with
         | [] =>

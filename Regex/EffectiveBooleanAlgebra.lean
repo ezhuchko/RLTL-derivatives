@@ -14,7 +14,7 @@ export Denotation (denote)
 
 /-- Effective boolean algebra typeclass, with laws. -/
 class EffectiveBooleanAlgebra (α : Type u) (σ : outParam (Type v))
-    extends Denotation α σ, Bot α, Top α, Inf α, Sup α, HasCompl α where
+    extends Denotation α σ, Bot α, Top α, Min α, Max α, HasCompl α where
   denote_bot : denote ⊥ c = false
   denote_top : denote ⊤ c = true
   denote_compl : denote aᶜ c = !denote a c
@@ -47,8 +47,8 @@ protected def BA.denote [Denotation α σ] (c : σ) : BA α → Bool
 instance [Denotation α σ] : EffectiveBooleanAlgebra (BA α) σ where
   bot := BA.bot
   top := BA.top
-  inf := BA.and
-  sup := BA.or
+  min := BA.and
+  max := BA.or
   compl := BA.not
   denote_bot := rfl
   denote_top := rfl
