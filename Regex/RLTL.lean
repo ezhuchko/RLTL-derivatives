@@ -406,20 +406,66 @@ theorem unique_continuation {r : ERE α} (h : prefixFree r) :
     have ⟨m,hm1,hm2⟩ := h1 _ hj
     simp at hm1 hm2; exists m; simp; exists hm1
 
+theorem lemma23 (h : as ++ bs = Stream'.take i w)
+  : length as ≤ i := by
+    have := congrArg List.length h;
+    simp at this
+    linarith
+
+theorem ufff_cat  {r : ERE α} (rpf : prefixFree r) (isBC : IsBound w r isBound)
+  (m : Stream'.take i w ⊫ r⁽k⁾) : isBound i = true := by
+  let ⟨b1,b2⟩ := isBC
+  match k with
+  | 0 =>
+    match i with
+    | 0 => exact b1
+    | i + 1 => simp[Stream'.take_succ] at m
+  | k + 1 =>
+    unfold repeat_cat at m
+    have cat_swap :  Stream'.take i w ⊫ ( r⁽k⁾ ⬝ r ) := sorry
+    simp at cat_swap
+    let ⟨m1,m2,m3,m4,m5⟩ := cat_swap
+    have cong1 := congrArg (List.take m1.length) m5
+    simp at cong1
+    rw[cong1] at m2
+    have := ufff_cat rpf isBC m2
+    rw[Nat.min_eq_right (lemma23 m5)] at this
+    have ⟨k1,k2,k3,k4⟩ := b2 _ this
+    have congL := congrArg List.length m5
+    simp at congL
+    have : k1 = m3.length := by
+      have cong2 := congrArg (List.drop m1.length) m5
+      simp at cong2
+      rw[cong2] at m4
+      rw[←congL] at m4
+      rw[←Stream'.take_drop] at m4
+      exact prefix_unique rpf m4 k3
+    rw[←congL]
+    rw[this] at k4
+    exact k4
+
+
+theorem ufff {r : ERE α} (rpf : prefixFree r) (h : IsBound w r isBound)
+  (m : Stream'.take i w ⊫ r*) : isBound i = true := by
+  simp[ERE.models] at m
+  let ⟨k,m⟩ := m
+  exact ufff_cat rpf h m
+
 theorem prefixFree_equiv  {r : ERE α} (rpf : prefixFree r) :
   w |= r^ω → w |= (r* :> X(r ∷ Pred ⊤)) := by
-  intro h
+  intro ⟨isBound,corr@⟨b0,h0⟩⟩
   simp_rw[unique_continuation rpf]
-  simp at h
   intro i z
-  have ⟨pj, pr⟩ := h.ind i z
-  exists pj
-  apply And.intro
-  . exact pr
-  . intro mm mmi
-    have c := prefix_unique rpf pr mmi
-    simp at c
-    exact c
+  have := ufff rpf corr z
+  have ⟨t+1,t2,t3,_⟩ := h0 (i + 1) this
+  exact ⟨t, t3,
+    by intro y
+       intro m
+       have c := prefix_unique rpf t3 m
+       simp at c
+       exact c⟩
+
+instance decidModels {r : ERE α} : Decidable (xs ⊫ r) := sorry
 
 theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
   w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) → w |= r^ω := by
@@ -427,10 +473,33 @@ theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
   unfold RLTL.models at h
   simp_rw[unique_initial_match rpf] at h
   simp_rw[unique_continuation rpf] at h
+  let ⟨⟨len,lem,ler⟩,leg⟩ := h
   unfold RLTL.models
-  constructor
-  . intro i z
-    have ⟨pj, pr⟩ := h.2 i z
-    exact ⟨pj, pr.1⟩
-  . let ⟨j,hj,hj_uniq⟩ := h.1
-    exists j
+  exists
+    (λ j => decide (Stream'.take j w ⊫ r*))
+  apply And.intro
+  . simp
+    exists 0
+    dsimp
+    simp
+  . intro i m
+    match i with
+    | 0 =>
+      simp;
+      exists len + 1
+      exists (by simp)
+      exists lem
+      exists 1
+      dsimp at lem
+      simp
+      exact lem
+    | i + 1 =>
+      simp only [decide_eq_true_eq] at m
+      have ⟨uj,jc1,jc2⟩ := leg i m
+      exists uj + 1
+      exists (by simp)
+      exists jc1
+      simp only [decide_eq_true_eq]
+      have asd := semmm' m jc1
+      rw[Stream'.take_add]
+      exact asd

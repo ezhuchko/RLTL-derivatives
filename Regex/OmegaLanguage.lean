@@ -19,14 +19,23 @@ open List Stream' TTerm ERE RLTL
     The idea is to show the existence of a stream of natural numbers `deltas`, which
     partitions `w` into subwords of non-zero lengths that are each in the language
     of `r`. The stream `deltas` ensures that the partitioning is well-defined. -/
+
+@[simp]
+def IsBound (w : Stream' σ) (r : ERE α) (isBound : ℕ → Bool) : Prop :=
+      isBound 0
+    ∧ ∀ i, isBound i
+      → ∃ len > 0, Stream'.take len (Stream'.drop i w) ⊫ r
+                 ∧ isBound (i + len)
+
 @[simp]
 def InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop :=
-  ∀ (i : ℕ), Stream'.take i w ⊫ r* →
-    ∃ j, Stream'.take (j + 1) (Stream'.drop i w) ⊫ r
+  ∃ (isBound : ℕ → Bool), IsBound w r isBound
 
 theorem base_case {r : ERE α} (h : InOmegaLanguage w r) :
-  ∃ l : ℕ, Stream'.take (l + 1) w ⊫ r :=
-  h 0 (by simp; exists 0; dsimp; simp)
+  ∃ l > 0, Stream'.take l w ⊫ r :=
+  let ⟨_, d0, h1⟩ := h;
+  let ⟨p1 + 1,p2,pl,_⟩ := h1 0 d0;
+  ⟨p1 + 1, p2, pl⟩
 
 infixr:40 " ∈* "  => InOmegaLanguage
 
@@ -38,30 +47,76 @@ theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
     simp only [get_zero_cons, Stream'.tail_cons, cons.injEq, true_and]
     exact take_length_append
 
-theorem split_stream {r : ERE α} (h : ws ++ₛ w ∈* r) (left : ws ⊫ r):
+theorem lemma11 (h : j ≥ ws.length) w
+   : Stream'.drop (j - ws.length) w = Stream'.drop j (ws ++ₛ w) := by
+  match ws with
+  | [] =>
+    simp only [length_nil, Stream'.drop_zero]
+    simp
+  | .cons _ ws =>
+    match j with
+    | 0 => contradiction
+    | j + 1 =>
+      simp at h
+      have := lemma11 h w
+      simp
+      rw[this]
+      rw[Stream'.drop_succ]
+      rw[Stream'.cons_append_stream]
+      simp
+
+theorem concat_stream {r : ERE α} (wn0 : ws.length > 0)
+  (left : ws ⊫ r) (h : w ∈* r) :
+  ws ++ₛ w ∈* r := by
+  let ⟨deltas,d0,h1⟩ := h
+  exists
+    (fun j =>
+        if j >= ws.length then
+          deltas (j - ws.length)
+        else
+          j = 0)
+  apply And.intro
+  . simp
+    aesop
+  . intro j
+    intro l
+    by_cases eq:j >= ws.length
+    . simp at l
+      simp_rw[eq] at l
+      dsimp at l
+      dsimp
+      have ⟨len,lgz,m1,m2⟩ := h1 (j - ws.length) l
+      exists len
+      exists lgz
+      rw[lemma11 eq w] at m1
+      exists m1
+      have : j + len ≥ ws.length := by linarith
+      simp_rw[this]
+      simp
+      rw[←Nat.sub_add_comm eq] at m2
+      exact m2
+    . simp_rw[eq] at l
+      simp at l
+      subst l
+      dsimp
+      exists ws.length
+      exists wn0
+      exists (by
+        simp[take_length_append]
+        exact left)
+      simp
+      have := h1
+      exact d0
+
+theorem split_stream {r : ERE α}
+  (left : ws ⊫ r) (h : ws ++ₛ w ∈* r) :
   w ∈* r := by
-  intro i hi
-  have := h (i + ws.length)
-  have := this (by
-    simp[Stream'.take]
-    simp[ERE.models] at hi
-    let ⟨m, p⟩ := hi
-    exists m + 1
-    dsimp
-    unfold ERE.models
-    exists ws
-    exists Stream'.take i w
-    dsimp
-    exists left
-    exists p
-    rw[Nat.add_comm]
-    simp[Stream'.take_add]
-    simp[take_length_append]
-    simp[Stream'.drop_append_stream])
-  rw[Nat.add_comm] at this
-  rw[←Stream'.drop_drop] at this
-  rw[Stream'.drop_append_stream] at this
-  exact this
+  have ⟨isBound,b0,h0⟩ := h
+  exists λ j => isBound (ws.length + j)
+  dsimp
+  have := h0 0 b0
+  sorry
+
 
 theorem semmm {r : ERE α} (a : xs ⊫ r) (b : ys ⊫ r*) :
   xs ++ ys ⊫ r* := by
@@ -72,30 +127,15 @@ theorem semmm {r : ERE α} (a : xs ⊫ r) (b : ys ⊫ r*) :
   simp
   exists xs; exists a; exists ys
 
-theorem regexOmegaClosure {r : ERE α} :
-  w ∈* r ↔ (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) := by
-  apply Iff.intro
-  . intro h
-    have ⟨len,m⟩ := base_case h
-    exists len + 1
-    exists (by simp)
-    exists m
-    intro i o
-    rw[Stream'.drop_drop]
-    exact h (len + 1 + i) (by
-      rw[Stream'.take_add]
-      apply semmm m o)
-  . intro ⟨i+1,ig0,h1,h2⟩
-    intro j m
-    by_cases ip:i + 1 ≤ j
-    . have := h2 (j - (i + 1)) (by
-        sorry)
-      rw[Stream'.drop_drop] at this
-      rw[Nat.add_sub_cancel' ip] at this
-      exact this
-    . simp at ip
-      have := h2 (j - (i + 1))  (by
-        sorry)
-      rw[Stream'.drop_drop] at this
-      rw[Nat.add_sub_cancel'] at this
-      sorry
+theorem semmm' {r : ERE α} (a : xs ⊫ r*) (b : ys ⊫ r) :
+  xs ++ ys ⊫ r* := by
+  sorry
+  -- simp at a
+  -- let ⟨m,hm⟩ := a
+  -- simp
+  -- exists m + 1
+  -- simp
+  -- exists ys;
+  -- exists b
+  -- exists xs
+  -- exists hm
