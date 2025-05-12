@@ -15,84 +15,16 @@ variable {α σ : Type} [EffectiveBooleanAlgebra α σ]
 
 open List Stream' TTerm ERE RLTL
 
-
--- abcdefhijksdflopiejfoaiejfsudhfaiuysehf
---      ^           ^      ^         ^
---      6          12     18        24     boundaries = pointers
---   0       1         2          3        word lengths = "indexes"
-
-abbrev Index : Type := ℕ
-
-abbrev Delta : Type := Index → ℕ -- associate a word index to its beginning in the stream
-
-@[simp]
-def getWordStart (deltas : Delta) (i : Index) : ℕ :=
-  match i with
-  | 0 => 0
-  | .succ i => (head deltas + 1) + getWordStart (tail deltas) i
-
-/-- This predicate checks whether a stream `w` is in the ω-closure of `r`, based on a
-    stream of subword lengths `deltas`. -/
-@[simp]
-def IsDeltasOmegaLanguage (w : Stream' σ) (r : ERE α) (deltas : Delta) : Prop :=
-  ∀ (i : Index),                        -- for all regex matches,
-    let start := getWordStart deltas i  -- get the starting index of the subword
-    let len := get deltas i + 1         -- get the length of the subword
-    take len (drop start w) ⊫ r         -- check that it is in the language of r
-
 /-- This predicate checks whether a stream `w` is in the ω-closure of `r` i.e. `w ∈ r*?`.
     The idea is to show the existence of a stream of natural numbers `deltas`, which
     partitions `w` into subwords of non-zero lengths that are each in the language
     of `r`. The stream `deltas` ensures that the partitioning is well-defined. -/
-def InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop :=
-  ∃ (deltas : Delta), IsDeltasOmegaLanguage w r deltas
+structure InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop where
+  ind : ∀ (i : ℕ), Stream'.take (i + 1) w ⊫ r*
+      → ∃ j, Stream'.take (j + 1) (Stream'.drop (i + 1) w) ⊫ r
+  base : ∃ l : ℕ, Stream'.take (l + 1) w ⊫ r
 
 infixr:40 " ∈* "  => InOmegaLanguage
-
-
-theorem tt {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas)
-        : IsDeltasOmegaLanguage w r (Stream'.tail deltas) := by
-  intro i
-  sorry
-
-theorem neat {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas) :
-  getWordStart deltas idx = sum (Stream'.take idx deltas) + idx := by
-  match idx with
-  | 0 => simp
-  | idx + 1 =>
-    simp[Stream'.take_succ]
-    have z := neat (tt p) (deltas := tail deltas) (idx := idx)
-    linarith
-
-theorem getWordStart_end {r : ERE α} (p : IsDeltasOmegaLanguage w r deltas) :
-  getWordStart deltas (idx + 1) =
-    getWordStart deltas idx + (Stream'.get deltas idx + 1) := by
-  rw[neat (idx := idx + 1) p]
-  rw[neat (idx := idx) p]
-  simp only [Stream'.take_succ']
-  simp only [Nat.sum_append]
-  simp
-  linarith
-
-theorem charOmegaDrop {w : Stream' σ} {r : ERE α} {deltas : Delta}
-  (h : IsDeltasOmegaLanguage w r deltas) :
-  IsDeltasOmegaLanguage (drop (head deltas + 1) w) r (tail deltas) :=
-  fun i => by simp only [get_tail, Stream'.drop_drop]; exact h (i + 1)
-
-theorem charOmegaHead {w : Stream' σ} {r : ERE α} {deltas : Delta}
-  (h : IsDeltasOmegaLanguage w r deltas) :
-  take ((head deltas) + 1) w ⊫ r := h 0
-
-theorem charOmeganth {w : Stream' σ} {r : ERE α} {deltas : Delta}
-  (h : IsDeltasOmegaLanguage w r deltas) (i : ℕ) :
-  take ((get deltas i) + 1) (drop (getWordStart deltas i) w) ⊫ r := by
-  match i with
-  | 0 => simp; exact charOmegaHead h
-  | i + 1 =>
-    simp
-    have := charOmegaDrop h i
-    simp at this
-    exact this
 
 theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
   match s with
@@ -102,42 +34,84 @@ theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
     simp only [get_zero_cons, Stream'.tail_cons, cons.injEq, true_and]
     exact take_length_append
 
-theorem charOmegaCons {w : Stream' σ} {r : ERE α} {deltas : Delta}
-  (h : IsDeltasOmegaLanguage w r deltas) (m : a :: str ⊫ r):
-  -- we just put str and not a :: str because in the stream the length is minus one
-  IsDeltasOmegaLanguage ((a :: str) ++ₛ w) r (length str :: deltas) :=
-  fun i =>
-  match i with
-  | 0 => by
-    simp [get_zero_cons, getWordStart, Stream'.drop_zero]
-    rw[←Nat.succ_eq_add_one]
-    have : (a::str).length = str.length.succ := rfl
-    rw[←this, take_length_append]
-    exact m
-  | Nat.succ i => by
-    simp only [get_succ_cons, getWordStart, Stream'.tail_cons, get_zero_cons]
-    rw[←Stream'.drop_drop,←Nat.succ_eq_add_one]
-    rw[←Nat.succ_eq_add_one]
-    have : (a::str).length = str.length.succ := rfl
-    rw[←this,Stream'.drop_append_stream]
-    exact (h i)
+theorem append_stream {r : ERE α} (left : ws ⊫ r) (right : w ∈* r) :
+  ws ++ₛ w ∈* r := by
+  sorry
+  --have := right (i - ws.length)
+  -- use left and hi
+  --sorry
+
+theorem split_stream {r : ERE α} (h : ws ++ₛ w ∈* r) (left : ws ⊫ r):
+  w ∈* r := by
+  constructor
+  . intro i hi
+    have := h.ind (i + ws.length)
+    have := this (by
+      simp[Stream'.take]
+      simp[ERE.models] at hi
+      let ⟨m, p⟩ := hi
+      exists m + 1
+      dsimp
+      unfold ERE.models
+      exists ws
+      exists Stream'.take (i + 1) w
+      dsimp
+      exists left
+      exists p
+      match ws with
+      | [] => simp[Stream'.take_succ]
+      | .cons w' ws =>
+        simp[Stream'.take_succ]
+        rw[Nat.add_comm]
+        rw[Stream'.cons_append_stream]
+        rw[Stream'.tail_cons]
+        rw[Stream'.take_add]
+        rw[Stream'.drop_succ]
+        simp only [drop_tail']
+        rw[Stream'.take_add]
+        simp [take_length_append]
+        rw[Stream'.drop_append_stream]
+        rw[←Stream'.drop_drop]
+        rw[Stream'.drop_append_stream]
+        rw[Stream'.tail_eq_drop]
+        unfold Stream'.take
+        simp)
+    rw[Nat.add_right_comm] at this
+    rw[Nat.add_comm] at this
+    rw[←Stream'.drop_drop] at this
+    rw[Stream'.drop_append_stream] at this
+    exact this
+  . match ws with
+    | [] => exact h.base
+    | .cons w ws =>
+      have := h.ind ws.length
+        (by rw[←length_cons]
+            rw[take_length_append (s := w :: ws)]
+            simp
+            exists 1
+            simp
+            exact left)
+      rw[←length_cons] at this
+      rw[Stream'.drop_append_stream] at this
+      exact this
 
 theorem regexOmegaClosure {r : ERE α} :
-  w ∈* r ↔ (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) :=
-  ⟨fun ⟨deltas, h⟩ =>
-   ⟨head deltas + 1,
-    by simp only [gt_iff_lt, add_pos_iff, zero_lt_one, or_true],
-    charOmegaHead h,⟨Stream'.tail deltas,charOmegaDrop h⟩⟩,
-   fun ⟨i,hi,h1,⟨deltas,h⟩⟩ =>
-   match i with
-   | 0 => by simp only [gt_iff_lt, lt_self_iff_false] at hi
-   | Nat.succ i => by
-     exists i::deltas
-     intro j
-     match j with
-     | 0 => simp only [get_zero_cons, getWordStart, Stream'.drop_zero]; exact h1
-     | Nat.succ j =>
-       simp only [get_succ_cons, getWordStart, Stream'.tail_cons, get_zero_cons]
-       have := h j
-       simp only [Stream'.drop_drop] at this
-       rw[←Nat.succ_eq_add_one] at this; exact this⟩
+  w ∈* r ↔ (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) := by
+  sorry
+  -- ⟨fun ⟨deltas, h⟩ =>
+  --  ⟨head deltas + 1,
+  --   by simp only [gt_iff_lt, add_pos_iff, zero_lt_one, or_true],
+  --   charOmegaHead h,⟨Stream'.tail deltas,charOmegaDrop h⟩⟩,
+  --  fun ⟨i,hi,h1,⟨deltas,h⟩⟩ =>
+  --  match i with
+  --  | 0 => by simp only [gt_iff_lt, lt_self_iff_false] at hi
+  --  | Nat.succ i => by
+  --    exists i::deltas
+  --    intro j
+  --    match j with
+  --    | 0 => simp only [get_zero_cons, getWordStart, Stream'.drop_zero]; exact h1
+  --    | Nat.succ j =>
+  --      simp only [get_succ_cons, getWordStart, Stream'.tail_cons, get_zero_cons]
+  --      have := h j
+  --      simp only [Stream'.drop_drop] at this
+  --      rw[←Nat.succ_eq_add_one] at this; exact this⟩

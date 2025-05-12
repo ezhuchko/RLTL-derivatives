@@ -7,13 +7,14 @@ variable {α σ : Type}
 
 open List Stream'
 
-axiom Pl : List α → Prop
+axiom Ps : List α → Prop
 axiom Pr : List α → Prop
-axiom incremental : Pl xs → Pr ys → Pl (xs ++ ys)
+axiom incrementalR : Ps xs → Pr ys → Ps (xs ++ ys)
+axiom incrementalL : Pr xs → Ps ys → Ps (xs ++ ys)
 
 def StreamIsSectionedUsingProp (w : Stream' Nat) : Prop :=
-   ∀ (i : ℕ), Pl (Stream'.take (i + 1) w)
-      → ∃! j, Pr (Stream'.take (j + 1) (Stream'.drop (i + 1) w))
+   ∀ (i : ℕ), Ps (Stream'.take (i + 1) w)
+       → ∃ j, Pr (Stream'.take (j + 1) (Stream'.drop (i + 1) w))
 
 abbrev Index : Type := ℕ
 
