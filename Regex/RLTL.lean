@@ -322,49 +322,25 @@ theorem RLTL.derivation {φ : RLTL α} :
       apply Iff.intro
       . intro h
         simp_rw[←ERE.derivation]
-        unfold InOmegaLanguage at h
-        sorry
+        have ⟨l,hl⟩ := h.base
+        simp only [Stream'.take_succ_cons] at hl
+        have hind := h.ind
+        match l with
+        | 0 => simp at hl; contradiction
+        | l + 1 =>
+          exists l
+          exists hl
+          constructor
+          . intro i hi
+            simp only [Stream'.drop_drop]
+            sorry
+          . sorry
       . intro ⟨i,hi,hi1⟩
         rw[←ERE.derivation] at hi
         have := append_stream hi hi1
         rw[Stream'.cons_append_stream] at this
         simp at this
         exact this
-  --
-  --       have h1 := charOmegaDrop proof
-  --       by_cases p : head deltas = 0
-  --       . rw [p,tail_eq_drop] at h1; exact Or.inl ⟨tail deltas,h1⟩
-  --       . match hp : get deltas 0 with
-  --         | 0 => contradiction
-  --         | .succ n =>
-  --           have gg2 := proof 0
-  --           simp only [hp, getWordStart, Stream'.drop_zero, Stream'.take_succ_cons] at gg2
-  --           erw [←Stream'.head_drop,Stream'.drop_zero] at hp
-  --           rw [hp,drop_succ] at h1
-  --           exact Or.inr ⟨n,ERE.derivation.mp gg2,tail deltas,h1⟩
-  --     . intro h
-  --       match h with
-  --       | Or.inl ⟨deltas,h2⟩ => exact ⟨0::deltas,charOmegaCons h2 (ERE.derivation.mpr (denoteOneStep.mpr g))⟩
-  --       | Or.inr ⟨i,h1,⟨deltas,proof⟩⟩ =>
-  --         have gg := charOmegaCons proof (ERE.derivation.mpr h1)
-  --         simp only [IsDeltasOmegaLanguage, Stream'.length_take, cons_append_stream,
-  --           append_take_drop] at gg
-  --         exact ⟨i.succ::deltas,gg⟩
-  --     . intro ⟨deltas,h1⟩
-  --       have h2 := charOmegaHead h1
-  --       match hp : head deltas with
-  --       | 0 =>
-  --         simp only [hp, zero_add, Stream'.take_succ_cons, Stream'.take_zero] at h2
-  --         erw [←denoteOneStep, ←ERE.derivation] at g
-  --         contradiction
-  --       | .succ n =>
-  --         simp only [hp, Stream'.take_succ_cons, ERE.derivation] at h2
-  --         have t := charOmegaDrop h1
-  --         rw [hp,drop_succ] at t
-  --         exact ⟨n,h2,tail deltas,t⟩
-  --     . intro ⟨i,pr,deltas,proof⟩
-  --       erw [←append_take_drop (i+1) w,←cons_append_stream]
-  --       exact ⟨length (take (i + 1) w)::deltas,charOmegaCons proof (ERE.derivation.mpr pr)⟩
 
 theorem RLTL.derivationMultiStep {φ : RLTL α} {u : List σ} {w : Stream' σ} :
   Stream'.appendStream' u w |= φ ↔ w |= multi_step φ u w :=
@@ -446,23 +422,15 @@ theorem prefixFree_equiv  {r : ERE α} (rpf : prefixFree r) :
     exact c
 
 theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
-  w |= (r* :> X(r ∷ Pred ⊤)) → w |= r^ω := by
+  w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) → w |= r^ω := by
   intro h
+  unfold RLTL.models at h
+  simp_rw[unique_initial_match rpf] at h
   simp_rw[unique_continuation rpf] at h
   unfold RLTL.models
   constructor
-  . unfold InOmegaLanguage
-    intro i z
-    have ⟨pj, pr⟩ := h i z
+  . intro i z
+    have ⟨pj, pr⟩ := h.2 i z
     exact ⟨pj, pr.1⟩
-  . sorry
-
-
-
- /-
-           abcdefghijklmopqrstuvwxyzeqoiwjdoihs...
-           ^^^^^^^         ^^^^^^^      ^^^^^
-                  ^^^^^^^^|       ^^^^^^
-                          |
-                r*
-           -/
+  . let ⟨j,hj,hj_uniq⟩ := h.1
+    exists j
