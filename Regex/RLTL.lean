@@ -179,6 +179,8 @@ theorem usi_distributivity {l r : ERE α} {φ : RLTL α} :
     | Or.inl hi => exact h.1 i hi
     | Or.inr hi => exact h.2 i hi
 
+instance decideModels {r : ERE α} : Decidable (xs ⊫ r) := sorry
+
 /-- The main theorem (Theorem 4 in the paper) proving correctness of the derivation rules for RLTL. -/
 theorem RLTL.derivation {φ : RLTL α} :
   a::w |= φ ↔ w |= (𝜕 φ) [a] :=
@@ -306,40 +308,78 @@ theorem RLTL.derivation {φ : RLTL α} :
       simp only [g, ↓reduceIte, RLTL.models, modelsEBA, denote_top, true_and]
       apply Iff.intro
       . intro h
-        apply Or.inl $ split_stream (ws:=[a]) h this
+        simp_rw[←ERE.derivation]
+        clear g
+        let ⟨ws,ws1,ws2⟩ := h
+        apply Or.inl
+        exists (fun i => ws (i + 1))
+        have ⟨fst_match + 1,nz,memb,proof⟩ := ws2 0 ws1
+        simp at memb proof
+        match fst_match with
+        | 0 =>
+          simp at memb proof
+          unfold IsBound
+          simp only
+          exists proof
+          intro j hj
+          have ⟨a1,a2,a3,a4⟩ := ws2 _ hj
+          rw[Stream'.drop_succ, Stream'.tail_cons] at a3
+          exists a1; exists a2; exists a3
+          rw[Nat.add_assoc, Nat.add_comm 1 a1, ←Nat.add_assoc] at a4
+          exact a4
+        | f + 1 =>
+          unfold IsBound
+          have ⟨a1,a2,a3⟩ := base_case h
+          exists (by simp; sorry)
+          sorry
+        -- apply Or.inl
+        -- exists (λ j => decide (Stream'.take j w ⊫ r*))
+        -- simp[-ERE.models]
+        -- exists (by simp; exists 0; simp)
+        -- intro i hi
+        -- have ⟨bc,bc_ne,hbc⟩ := base_case h
+        -- sorry
+        -- exists ws
+        -- exists ws1
+        -- intro a ha
+        -- have ⟨a1,a2,a3,a4⟩ := ws2 a ha
+        -- exists a1
+        -- exists a2
+        -- exists sorry
+        -- rw[Stream'.take_succ] at ws2
+        -- rw[Stream'.drop_succ] at ws3
+        -- rw[Stream'.tail_cons] at ws3
+        -- -- apply Or.inl $ split_stream (ws:=[a]) h this
       . intro h
         match h with
-        | Or.inl h1 => apply append_stream this h1
+        | Or.inl h1 => apply concat_stream (by simp) this h1
         | Or.inr ⟨i,hi,hi1⟩ =>
           clear h
           rw[←ERE.derivation] at hi
-          have := append_stream hi hi1
+          have := concat_stream (by simp) hi hi1
           rw[Stream'.cons_append_stream] at this
           simp at this
           exact this
-    . simp [g, RLTL.models, modelsEBA, denote_bot, false_and, false_or]
+    . simp only [gt_iff_lt, g, Bool.false_eq_true, ↓reduceIte, models,
+      modelsEBA, denote_bot, false_and, Stream'.drop_drop, false_or]
       erw [←denoteOneStep, ←ERE.derivation] at g
       apply Iff.intro
       . intro h
         simp_rw[←ERE.derivation]
-        have ⟨l,hl⟩ := h.base
-        simp only [Stream'.take_succ_cons] at hl
-        have hind := h.ind
-        match l with
-        | 0 => simp at hl; contradiction
-        | l + 1 =>
-          exists l
-          exists hl
-          constructor
-          . intro i hi
-            simp only [Stream'.drop_drop]
-            sorry
-          . sorry
-      . intro ⟨i,hi,hi1⟩
+        -- rw[regexOmegaClosure] at h
+        -- let ⟨a1,a2,a3,a4⟩ := h
+        unfold InOmegaLanguage at h
+        let ⟨vect,isB⟩ := h
+        simp only [IsBound, gt_iff_lt] at isB
+        let ⟨i,hi⟩ := isB
+        clear h isB
+
+        sorry
+      . intro ⟨i,hi,ss⟩
         rw[←ERE.derivation] at hi
-        have := append_stream hi hi1
+        have := concat_stream (by simp) hi ss
         rw[Stream'.cons_append_stream] at this
-        simp at this
+        rw[Stream'.append_take_drop ] at this
         exact this
 
 theorem RLTL.derivationMultiStep {φ : RLTL α} {u : List σ} {w : Stream' σ} :
@@ -422,7 +462,7 @@ theorem ufff_cat  {r : ERE α} (rpf : prefixFree r) (isBC : IsBound w r isBound)
     | i + 1 => simp[Stream'.take_succ] at m
   | k + 1 =>
     unfold repeat_cat at m
-    have cat_swap :  Stream'.take i w ⊫ ( r⁽k⁾ ⬝ r ) := sorry
+    have cat_swap :  Stream'.take i w ⊫ (r⁽k⁾ ⬝ r) := sorry
     simp at cat_swap
     let ⟨m1,m2,m3,m4,m5⟩ := cat_swap
     have cong1 := congrArg (List.take m1.length) m5
@@ -464,8 +504,6 @@ theorem prefixFree_equiv  {r : ERE α} (rpf : prefixFree r) :
        have c := prefix_unique rpf t3 m
        simp at c
        exact c⟩
-
-instance decidModels {r : ERE α} : Decidable (xs ⊫ r) := sorry
 
 theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
   w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) → w |= r^ω := by

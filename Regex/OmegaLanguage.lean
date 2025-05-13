@@ -15,17 +15,13 @@ variable {α σ : Type} [EffectiveBooleanAlgebra α σ]
 
 open List Stream' TTerm ERE RLTL
 
-/-- This predicate checks whether a stream `w` is in the ω-closure of `r` i.e. `w ∈ r*?`.
-    The idea is to show the existence of a stream of natural numbers `deltas`, which
-    partitions `w` into subwords of non-zero lengths that are each in the language
-    of `r`. The stream `deltas` ensures that the partitioning is well-defined. -/
-
+/-- This predicate checks whether a stream `w` is in the ω-closure of `r` i.e. `w ∈ r*?`.-/
 @[simp]
 def IsBound (w : Stream' σ) (r : ERE α) (isBound : ℕ → Bool) : Prop :=
-      isBound 0
-    ∧ ∀ i, isBound i
-      → ∃ len > 0, Stream'.take len (Stream'.drop i w) ⊫ r
-                 ∧ isBound (i + len)
+    isBound 0
+  ∧ ∀ i, isBound i
+    → ∃ len > 0, Stream'.take len (Stream'.drop i w) ⊫ r
+                ∧ isBound (i + len)
 
 @[simp]
 def InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop :=
@@ -108,15 +104,33 @@ theorem concat_stream {r : ERE α} (wn0 : ws.length > 0)
       have := h1
       exact d0
 
-theorem split_stream {r : ERE α}
-  (left : ws ⊫ r) (h : ws ++ₛ w ∈* r) :
-  w ∈* r := by
-  have ⟨isBound,b0,h0⟩ := h
-  exists λ j => isBound (ws.length + j)
+theorem regexOmegaClosureOneD {r : ERE α} (h : w ∈* r)
+  : ∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r := by
+  let ⟨isBound, b0, h0⟩ := h
+  have ⟨ws,a2,a3,a4⟩ := h0 0 b0
+  exists ws
+  exists a2
+  exists a3
+  exists λ j => isBound (ws + j)
   dsimp
-  have := h0 0 b0
-  sorry
+  simp at a4
+  exists a4
+  intro i m
+  have ⟨bs,b2,b3,b4⟩ := h0 _ m
+  exists bs
+  exists b2
+  simp[Stream'.drop_drop]
+  exists b3
+  rw[←Nat.add_assoc]
+  exact b4
 
+theorem regexOmegaClosure {r : ERE α} :
+  w ∈* r ↔ (∃ i > 0, take i w ⊫ r ∧ drop i w ∈* r) :=
+  ⟨regexOmegaClosureOneD,
+   λ ⟨i, o, p, q⟩ =>
+     have := concat_stream (by simp; exact o) p q
+     by rw[Stream'.append_take_drop] at this
+        exact this⟩
 
 theorem semmm {r : ERE α} (a : xs ⊫ r) (b : ys ⊫ r*) :
   xs ++ ys ⊫ r* := by
@@ -130,12 +144,3 @@ theorem semmm {r : ERE α} (a : xs ⊫ r) (b : ys ⊫ r*) :
 theorem semmm' {r : ERE α} (a : xs ⊫ r*) (b : ys ⊫ r) :
   xs ++ ys ⊫ r* := by
   sorry
-  -- simp at a
-  -- let ⟨m,hm⟩ := a
-  -- simp
-  -- exists m + 1
-  -- simp
-  -- exists ys;
-  -- exists b
-  -- exists xs
-  -- exists hm
