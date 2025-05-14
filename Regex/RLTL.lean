@@ -310,46 +310,43 @@ theorem RLTL.derivation {φ : RLTL α} :
       . intro h
         simp_rw[←ERE.derivation]
         clear g
-        let ⟨ws,ws1,ws2⟩ := h
-        apply Or.inl
-        exists (fun i => ws (i + 1))
-        have ⟨fst_match + 1,nz,memb,proof⟩ := ws2 0 ws1
-        simp at memb proof
-        match fst_match with
+        let ⟨ws,p⟩ := h
+        have ⟨a1 + 1,a2,a3,a4⟩ := base_case' p
+        let ⟨p1,p2⟩ := p
+        match a1 with
         | 0 =>
-          simp at memb proof
-          unfold IsBound
-          simp only
-          exists proof
-          intro j hj
-          have ⟨a1,a2,a3,a4⟩ := ws2 _ hj
-          rw[Stream'.drop_succ, Stream'.tail_cons] at a3
-          exists a1; exists a2; exists a3
-          rw[Nat.add_assoc, Nat.add_comm 1 a1, ←Nat.add_assoc] at a4
-          exact a4
-        | f + 1 =>
-          unfold IsBound
-          have ⟨a1,a2,a3⟩ := base_case h
-          exists (by simp; sorry)
-          sorry
-        -- apply Or.inl
-        -- exists (λ j => decide (Stream'.take j w ⊫ r*))
-        -- simp[-ERE.models]
-        -- exists (by simp; exists 0; simp)
-        -- intro i hi
-        -- have ⟨bc,bc_ne,hbc⟩ := base_case h
-        -- sorry
-        -- exists ws
-        -- exists ws1
-        -- intro a ha
-        -- have ⟨a1,a2,a3,a4⟩ := ws2 a ha
-        -- exists a1
-        -- exists a2
-        -- exists sorry
-        -- rw[Stream'.take_succ] at ws2
-        -- rw[Stream'.drop_succ] at ws3
-        -- rw[Stream'.tail_cons] at ws3
-        -- -- apply Or.inl $ split_stream (ws:=[a]) h this
+          simp at a4
+          apply Or.inl
+          unfold InOmegaLanguage
+          exists (fun i => ws (i + 1))
+          exists a4
+          intro i hi
+          simp at hi a3
+          have ⟨len,k1,k2,k3⟩ := p2 _ hi
+          exists len
+          exists k1
+          rw[Stream'.drop_succ,Stream'.tail_cons] at k2
+          exists k2
+          dsimp; rw[Nat.add_assoc,Nat.add_comm len 1,←Nat.add_assoc]
+          exact k3
+        | a1 + 1 =>
+          apply Or.inr
+          exists a1
+          simp at a3
+          exists a3
+          exists (fun i => ws (a1 + i + 1 + 1))
+          exists (by simp; exact a4)
+          intro i hi
+          have ⟨len,k1,k2,k3⟩ := p2 _ hi
+          exists len
+          exists k1
+          rw[Stream'.drop_succ,Stream'.tail_cons] at k2
+          simp
+          rw[Nat.add_assoc,Nat.add_comm 1 i,←Nat.add_assoc]
+          exists k2
+          have : (a1 + i + 1 + 1 + len) = (a1 + (i + len) + 1 + 1) := by linarith
+          rw[←this]
+          exact k3
       . intro h
         match h with
         | Or.inl h1 => apply concat_stream (by simp) this h1
@@ -366,15 +363,30 @@ theorem RLTL.derivation {φ : RLTL α} :
       apply Iff.intro
       . intro h
         simp_rw[←ERE.derivation]
-        -- rw[regexOmegaClosure] at h
-        -- let ⟨a1,a2,a3,a4⟩ := h
         unfold InOmegaLanguage at h
         let ⟨vect,isB⟩ := h
+        let ⟨m + 1,_,k, mi⟩ := base_case' isB
         simp only [IsBound, gt_iff_lt] at isB
         let ⟨i,hi⟩ := isB
         clear h isB
-
-        sorry
+        match m with
+        | 0 => contradiction
+        | m + 1 =>
+          exists m
+          simp at k
+          exists k
+          exists λ j => vect (j + m + 1 + 1)
+          exists (by simp; exact mi)
+          intro i hyp
+          have ⟨o1,o2,o3,o4⟩ := hi (i + m + 1 + 1) hyp
+          rw[Stream'.drop_succ,Stream'.tail_cons] at o3
+          exists o1
+          exists (by simp; exact o2)
+          exact ⟨by rw[Stream'.drop_drop, Nat.add_comm, ←Nat.add_assoc]; exact o3,
+                 by simp only
+                    have : i + m + 1 + 1 + o1 = i + o1 + m + 1 + 1 := by linarith
+                    rw[←this]
+                    exact o4⟩
       . intro ⟨i,hi,ss⟩
         rw[←ERE.derivation] at hi
         have := concat_stream (by simp) hi ss

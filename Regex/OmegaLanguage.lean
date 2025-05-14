@@ -33,6 +33,13 @@ theorem base_case {r : ERE α} (h : InOmegaLanguage w r) :
   let ⟨p1 + 1,p2,pl,_⟩ := h1 0 d0;
   ⟨p1 + 1, p2, pl⟩
 
+theorem base_case' {r : ERE α} {isBound : ℕ → Bool} (h : IsBound w r isBound) :
+  ∃ l > 0, Stream'.take l w ⊫ r ∧ isBound l :=
+  let ⟨d0, h1⟩ := h;
+  let ⟨p1 + 1,p2,pl,mi⟩ := h1 0 d0;
+  by simp at mi
+     exact ⟨p1 + 1, p2, pl, mi⟩
+
 infixr:40 " ∈* "  => InOmegaLanguage
 
 theorem take_length_append : Stream'.take (length s) (s ++ₛ w) = s := by
