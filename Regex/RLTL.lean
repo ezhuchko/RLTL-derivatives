@@ -179,8 +179,6 @@ theorem usi_distributivity {l r : ERE α} {φ : RLTL α} :
     | Or.inl hi => exact h.1 i hi
     | Or.inr hi => exact h.2 i hi
 
-instance decideModels {r : ERE α} : Decidable (xs ⊫ r) := sorry
-
 /-- The main theorem (Theorem 4 in the paper) proving correctness of the derivation rules for RLTL. -/
 theorem RLTL.derivation {φ : RLTL α} :
   a::w |= φ ↔ w |= (𝜕 φ) [a] :=
@@ -474,7 +472,7 @@ theorem ufff_cat  {r : ERE α} (rpf : prefixFree r) (isBC : IsBound w r isBound)
     | i + 1 => simp[Stream'.take_succ] at m
   | k + 1 =>
     unfold repeat_cat at m
-    have cat_swap :  Stream'.take i w ⊫ (r⁽k⁾ ⬝ r) := sorry
+    have cat_swap : Stream'.take i w ⊫ (r⁽k⁾ ⬝ r) := equiv_repeat_cat_cat.mpr m
     simp at cat_swap
     let ⟨m1,m2,m3,m4,m5⟩ := cat_swap
     have cong1 := congrArg (List.take m1.length) m5
@@ -517,6 +515,31 @@ theorem prefixFree_equiv  {r : ERE α} (rpf : prefixFree r) :
        simp at c
        exact c⟩
 
+theorem prefixFree_equiv1 {r : ERE α} (rpf : prefixFree r) :
+  w |= r^ω → w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) := by
+  intro ⟨isBound,corr@⟨b0,h0⟩⟩
+  unfold RLTL.models
+  simp_rw[unique_initial_match rpf]
+  simp_rw[unique_continuation rpf]
+  apply And.intro
+  . have ⟨g1 + 1,g2,g3⟩ := base_case' corr
+    exists g1
+    simp
+    exists g3.1
+    intro y hy
+    have := prefix_unique rpf g3.1 hy
+    simp at this
+    exact this
+  . intro i z
+    have := ufff rpf corr z
+    have ⟨t+1,t2,t3,_⟩ := h0 (i + 1) this
+    exact ⟨t, t3,
+      by intro y
+         intro m
+         have c := prefix_unique rpf t3 m
+         simp at c
+         exact c⟩
+
 theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
   w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) → w |= r^ω := by
   intro h
@@ -553,3 +576,7 @@ theorem prefixFree_equiv' {r : ERE α} (rpf : prefixFree r) :
       have asd := semmm' m jc1
       rw[Stream'.take_add]
       exact asd
+
+theorem prefixFree_equiv_final {r : ERE α} (rpf : prefixFree r) :
+  w |= r^ω ↔ w |= ((r ∷ Pred ⊤) ∧ₗ (r* :> X(r ∷ Pred ⊤))) :=
+  ⟨prefixFree_equiv1 rpf, prefixFree_equiv' rpf⟩

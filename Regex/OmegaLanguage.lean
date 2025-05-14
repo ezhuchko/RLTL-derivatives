@@ -27,12 +27,6 @@ def IsBound (w : Stream' σ) (r : ERE α) (isBound : ℕ → Bool) : Prop :=
 def InOmegaLanguage (w : Stream' σ) (r : ERE α) : Prop :=
   ∃ (isBound : ℕ → Bool), IsBound w r isBound
 
-theorem base_case {r : ERE α} (h : InOmegaLanguage w r) :
-  ∃ l > 0, Stream'.take l w ⊫ r :=
-  let ⟨_, d0, h1⟩ := h;
-  let ⟨p1 + 1,p2,pl,_⟩ := h1 0 d0;
-  ⟨p1 + 1, p2, pl⟩
-
 theorem base_case' {r : ERE α} {isBound : ℕ → Bool} (h : IsBound w r isBound) :
   ∃ l > 0, Stream'.take l w ⊫ r ∧ isBound l :=
   let ⟨d0, h1⟩ := h;
@@ -150,4 +144,12 @@ theorem semmm {r : ERE α} (a : xs ⊫ r) (b : ys ⊫ r*) :
 
 theorem semmm' {r : ERE α} (a : xs ⊫ r*) (b : ys ⊫ r) :
   xs ++ ys ⊫ r* := by
-  sorry
+  simp
+  simp at a
+  let ⟨m,hm⟩ := a
+  have := equiv_repeat_cat_cat (r:=r) (m:=m) (xs:=xs++ys)
+  exists m + 1
+  simp only [repeat_cat]
+  rw[←this]
+  simp
+  exists xs; exists hm; exists ys

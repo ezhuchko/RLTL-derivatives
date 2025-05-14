@@ -380,3 +380,89 @@ theorem ERE.derivationMultiStep {r : ERE α} {u v : List σ} :
   | a::as => by
     simp only [multi_step, cons_append]
     rw [ERE.derivation, derivationMultiStep]
+
+def derives (r : ERE α) : List σ → Bool
+  | [] => nullable r
+  | a::as => derives ((δ r) [a]) as
+
+theorem correctness {r : ERE α} :
+  derives r xs ↔ xs ⊫ r := by
+  match xs with
+  | [] => simp[derives]; rw[equivalenceNull]
+  | a::as =>
+    simp[derives]
+    rw[ERE.derivation]
+    have := correctness (r:= (δ r) [a]) (xs:=as)
+    exact this
+
+instance decideModels {r : ERE α} : Decidable (xs ⊫ r) := by
+  rw[←correctness (r:=r)]
+  exact (derives r xs).decEq true
+
+/-- correctness of regular expressions. -/
+@[simp]
+def models_equivalence (r q : ERE α) : Prop :=
+  ∀ {xs}, xs ⊫ r ↔ xs ⊫ q
+
+infixr:30 " ↔ᵣ " => models_equivalence
+
+/-- ↔ᵣ is an equivalence relation. -/
+theorem equiv_trans {r : ERE α} (rq : r ↔ᵣ q) (qp : q ↔ᵣ p) : r ↔ᵣ p :=
+  ⟨ Iff.mp qp ∘ Iff.mp rq , Iff.mpr rq ∘ Iff.mpr qp ⟩
+
+theorem equiv_sym {r : ERE α} (rq : r ↔ᵣ q) : q ↔ᵣ r :=
+  ⟨ Iff.mpr rq , Iff.mp rq ⟩
+
+theorem equiv_refl {r : ERE α} : r ↔ᵣ r := ⟨ id , id ⟩
+
+theorem equiv_cat_assoc {r : ERE α} :
+  ((r ⬝ q) ⬝ w) ↔ᵣ (r ⬝ (q ⬝ w)) :=
+  λ {xs} =>
+  ⟨ λ h => by
+    unfold models at h
+    let ⟨as,bs,h1,h2,h3⟩ := h
+    unfold models at h1
+    let ⟨cs,ds,h4,h5,h6⟩ := h1
+    simp
+    exact ⟨cs,h4,ds,h5,bs,h2,by subst h3; rw[←h6]; simp⟩,
+    λ h => by
+    simp at h
+    let ⟨as,h1,bs,h2,cs,h3,h4⟩ := h
+    simp
+    exact ⟨as,h1,bs,h2,cs,h3,by subst h4; simp⟩⟩
+
+/-- Congruence of matching with respect to concatenation, using `models`. -/
+theorem equiv_cat_cong {r : ERE α} (rr : r ↔ᵣ r') (qq : q ↔ᵣ q') :
+  r ⬝ q ↔ᵣ r' ⬝ q' :=
+  λ {xs} => by
+  simp at rr qq
+  unfold models
+  simp only
+  apply Iff.intro
+  . intro ⟨as,bs,h1,h2,h3⟩
+    rw[rr] at h1
+    rw[qq] at h2
+    exact ⟨as,bs,h1,h2,h3⟩
+  . intro ⟨as,bs,h1,h2,h3⟩
+    rw[←rr] at h1
+    rw[←qq] at h2
+    exact ⟨as,bs,h1,h2,h3⟩
+
+
+/-- Epsilon is the right unit with respect to concatenation, using `models`. -/
+theorem equiv_cat_eps {r : ERE α} :
+  r ⬝ ε ↔ᵣ r := by
+  simp[models]
+
+/-- Epsilon is the left unit with respect to concatenation, using `models`. -/
+theorem equiv_eps_cat {r : ERE α} :
+  ε ⬝ r ↔ᵣ r := by
+  simp[models]
+
+/-- Symmetry of iterated product, using `models`. -/
+theorem equiv_repeat_cat_cat {r : ERE α} :
+  (r ⁽ m ⁾) ⬝ r ↔ᵣ r ⬝ (r ⁽ m ⁾)  :=
+  match m with
+  | 0 => equiv_trans equiv_eps_cat (equiv_sym equiv_cat_eps)
+  | .succ _ => equiv_trans equiv_cat_assoc
+                           (equiv_cat_cong equiv_refl equiv_repeat_cat_cat)
