@@ -1,22 +1,36 @@
+# RLTL derivatives
+
+A Lean formalisation of symbolic derivatives for extended regular expressions (ERE), LTL and RLTL, together with their correctness proofs.
+
 ## Brief file overview
 
-Listed below is a brief description of each file of the formalization.
+Listed below is a brief description of each file of the formalisation.
 
-- `EffectiveBooleanAlgebra`: main definition of effective boolean algebras. 
-- `TTerm`: main definitions and lemmas about transition terms.
-- `Definitions`: contains the definitions of Extended Regular Expressions (ERE) and RLTL.
-- `Metrics`: some simple metrics to show termination of theorems/definitions.
-- `ERE`: the standard language-based match semantics and symbolic derivation rules for ERE.
-- `OmegaLanguage`: contains the specification of omega languages.
-- `RLTL`: contains the main theorem which connects derivative based unfolding with the formal semantics.
+- `Ere/Definitions`: the definition of extended regular expressions (ERE), with intersection, negation and fusion.
+- `Ere/Metrics`: the star metric used to show termination of the match semantics.
+- `Ere/Semantics`: the standard language-based match semantics `xs ⊫ r`.
+- `Ere/Derivative`: nullability, the symbolic derivative `δ r`, and multi-step evaluation.
+- `Ere/Correctness`: correctness of the symbolic derivative, `a :: xs ⊫ r ↔ xs ⊫ (δ r)[a]`.
+- `Ltl/Definitions`, `Ltl/Derivative`, `Ltl/Semantics`, `Ltl/Correctness`: plain LTL with its symbolic and classical derivatives, semantics, and the derivation theorem.
+- `Rltl/Definitions`: contains the definition of RLTL formulas.
+- `Rltl/Derivatives`: the symbolic derivative `𝜕 φ` and multi-step evaluation.
+- `Rltl/OmegaLanguage`: contains the specification of omega languages.
+- `Rltl/Semantics`: the match semantics of RLTL, the expansion laws of `U` and `R`, and algebraic rewrite rules.
+- `Rltl/Correctness`: contains the main theorem which connects derivatives with the formal semantics.
+
+Effective Boolean algebras and transition terms are imported from
+[symbolic-equivalence](https://github.com/ezhuchko/symbolic-equivalence).
 
 The project dependencies are listed in `lakefile.lean`.
 
 ## Dependencies
 
- - [Lean](https://lean-lang.org/) 4.7.0
- - [mathlib](https://github.com/leanprover-community/mathlib4/) revision [a5485f37](https://github.com/leanprover-community/mathlib4/tree/a5485f370ebd36f0c873820b1717d3d03b43b35e) from April 21 2024
+ - [Lean](https://lean-lang.org/) 4.35.0-rc4
+ - [mathlib](https://github.com/leanprover-community/mathlib4/) `v4.35.0-rc4`
+ - [symbolic-equivalence](https://github.com/ezhuchko/symbolic-equivalence) `main`
 
-The Lean version manager elan and the build tool lake will automatically download these dependency versions when you run `lake build`.
+## Building
 
-Lean has minimal platform requirements.  The instructions provided above will work on Ubuntu 24.04 (x86-64) with git and curl installed.  Other platforms, including Windows and macOS, are supported by Lean as well.  Please see the [Lean documentation](https://lean-lang.org/lean4/doc/setup.html) for more details on platform support.
+```
+lake build
+```

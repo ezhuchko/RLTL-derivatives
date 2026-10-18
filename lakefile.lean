@@ -5,8 +5,8 @@ package «regex» {
   -- add any package configuration options here
 }
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+require SymbolicEquivalence from git
+  "https://github.com/ezhuchko/symbolic-equivalence.git" @ "main"
 
 @[default_target]
 lean_lib «Regex» {
